@@ -1,0 +1,18 @@
+[package]
+name = "dispute"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk.workspace = true
+tr-common = { path = "../common" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+# Integration tests register the real escrow contract in the same Env.
+escrow = { path = "../escrow" }

@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-08-09T00:00:00.000Z",
+  "network": "testnet",
+  "agreements": [
+    {
+      "id": "AG-1042",
+      "state": "ACTIVE",
+      "deposit": 30000,
+      "depositStatus": "LOCKED",
+      "createdAt": "2026-06-10T11:00:00.000Z"
+    },
+    {
+      "id": "AG-1017",
+      "state": "MOVE_OUT_REQUESTED",
+      "deposit": 50000,
+      "depositStatus": "LOCKED",
+      "createdAt": "2026-05-02T10:30:00.000Z"
+    }
+  ]
+}

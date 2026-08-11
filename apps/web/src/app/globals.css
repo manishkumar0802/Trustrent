@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/*
+ * TrustRent design system — Tailwind CSS v4 (CSS-first configuration).
+ *
+ * Direction: premium property-management fintech.
+ *   - warm ivory background, charcoal text
+ *   - deep forest green primary
+ *   - muted sage for secondary/success
+ *   - amber ONLY for pending states
+ *   - red ONLY for danger/disputes
+ *
+ * Deliberately avoids crypto-blue gradients, neon, glassmorphism and
+ * blockchain decoration.
+ */
+@theme {
+  /* Typography */
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Warm ivory neutrals */
+  --color-ivory-50: #fbf9f4;
+  --color-ivory-100: #f5f0e7;
+  --color-ivory-200: #ece4d3;
+  --color-ivory-300: #ded3bc;
+
+  /* Charcoal ink */
+  --color-ink-900: #1c1917;
+  --color-ink-800: #292524;
+  --color-ink-700: #3f3a36;
+  --color-ink-500: #5c564f;
+  --color-ink-400: #7a736a;
+  --color-ink-300: #a8a198;
+
+  /* Deep forest green (primary) */
+  --color-forest-900: #10271c;
+  --color-forest-800: #173528;
+  --color-forest-700: #1f4533;
+  --color-forest-600: #2a5c44;
+  --color-forest-500: #3d7257;
+  --color-forest-100: #dfe9e1;
+  --color-forest-50: #eef4ef;
+
+  /* Muted sage */
+  --color-sage-600: #5d7266;
+  --color-sage-500: #7c8f83;
+  --color-sage-300: #b3c0b6;
+  --color-sage-100: #e4eae5;
+
+  /* Amber — pending states only */
+  --color-amber-600: #96701f;
+  --color-amber-500: #b9852d;
+  --color-amber-100: #f6edda;
+
+  /* Red — danger/dispute only */
+  --color-danger-600: #b3261e;
+  --color-danger-100: #f9e8e6;
+
+  /* Surfaces & lines */
+  --color-background: #fbf9f4;
+  --color-surface: #ffffff;
+  --color-border: #e8e1d3;
+
+  /* Elevation — flat, paper-like */
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.05), 0 6px 16px rgb(28 25 23 / 0.04);
+  --shadow-pop: 0 2px 6px rgb(28 25 23 / 0.06), 0 12px 32px rgb(28 25 23 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    background-color: var(--color-forest-700);
+    color: var(--color-ivory-50);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-forest-600);
+    outline-offset: 2px;
+  }
+}
+

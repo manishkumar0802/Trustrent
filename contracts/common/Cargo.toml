@@ -1,0 +1,19 @@
+[package]
+name = "tr-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Support crate — linked into each contract's WASM; not itself a contract.
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+soroban-sdk.workspace = true
+# Soroban SDK 22 permits any ed25519-dalek >=2.0. Newer 3.x releases are
+# incompatible with its test utilities, so keep the tested 2.1.x line.
+ed25519-dalek.workspace = true
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

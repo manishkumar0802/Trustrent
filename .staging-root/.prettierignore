@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+build
+coverage
+target
+contracts
+*.wasm
+.staging-root
+pnpm-lock.yaml
+package-lock.json

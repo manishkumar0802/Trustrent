@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "common",
+    "rental_agreement",
+    "escrow",
+    "dispute",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["TrustRent"]
+
+[workspace.dependencies]
+# Stellar Protocol 22 / Soroban SDK 22 — verify against
+# https://developers.stellar.org/docs/smart-contracts before upgrading.
+soroban-sdk = "22.0.0"

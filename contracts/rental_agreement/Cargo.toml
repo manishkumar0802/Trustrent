@@ -1,0 +1,20 @@
+[package]
+name = "rental-agreement"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk.workspace = true
+tr-common = { path = "../common" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+# Integration tests register the real escrow and dispute contracts in the
+# same Env so cross-contract calls execute against real state.
+escrow = { path = "../escrow" }
+dispute = { path = "../dispute" }

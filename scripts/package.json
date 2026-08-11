@@ -1,0 +1,20 @@
+{
+  "name": "@trustrent/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TrustRent deployment and seed scripts (Stellar testnet).",
+  "type": "module",
+  "scripts": {
+    "deploy": "tsx deployment/deploy.ts",
+    "seed": "tsx seed/seed-agreements.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.2"
+  }
+}
