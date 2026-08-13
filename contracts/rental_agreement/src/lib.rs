@@ -170,13 +170,15 @@ impl AgreementContract {
             .get(&DataKey::EscrowContract)
             .ok_or(Error::NotInitialized)?;
         let caller = env.current_contract_address();
-        EscrowClient::new(&env, &escrow_contract).try_lock_deposit(
-            &agreement_id,
-            &tenant,
-            &record.landlord,
-            &record.deposit_amount,
-            &caller,
-        ).into_result()?;
+        EscrowClient::new(&env, &escrow_contract)
+            .try_lock_deposit(
+                &agreement_id,
+                &tenant,
+                &record.landlord,
+                &record.deposit_amount,
+                &caller,
+            )
+            .into_result()?;
         Ok(())
     }
 
@@ -353,12 +355,9 @@ impl AgreementContract {
         let caller = env.current_contract_address();
         let to_tenant = record.deposit_amount - deduction;
         let to_landlord = deduction;
-        EscrowClient::new(&env, &escrow_contract).try_release_partial(
-            &agreement_id,
-            &to_tenant,
-            &to_landlord,
-            &caller,
-        ).into_result()?;
+        EscrowClient::new(&env, &escrow_contract)
+            .try_release_partial(&agreement_id, &to_tenant, &to_landlord, &caller)
+            .into_result()?;
 
         record.settled = true;
         env.storage()
@@ -396,14 +395,16 @@ impl AgreementContract {
             .get(&DataKey::DisputeContract)
             .ok_or(Error::NotInitialized)?;
         let caller = env.current_contract_address();
-        DisputeClient::new(&env, &dispute_contract).try_open_dispute(
-            &agreement_id,
-            &initiator,
-            &landlord,
-            &tenant,
-            &reason,
-            &caller,
-        ).into_result()?;
+        DisputeClient::new(&env, &dispute_contract)
+            .try_open_dispute(
+                &agreement_id,
+                &initiator,
+                &landlord,
+                &tenant,
+                &reason,
+                &caller,
+            )
+            .into_result()?;
 
         record.state = AgreementState::Disputed;
         env.storage()
@@ -640,7 +641,10 @@ mod test {
         // Only the invited tenant may join.
         let stranger = Address::generate(&h.env);
         assert_eq!(
-            h.agreement.try_join_agreement(&id, &stranger).unwrap_err().unwrap(),
+            h.agreement
+                .try_join_agreement(&id, &stranger)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
 
@@ -652,7 +656,10 @@ mod test {
 
         // Joining twice fails.
         assert_eq!(
-            h.agreement.try_join_agreement(&id, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_join_agreement(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::TenantAlreadyJoined
         );
     }
@@ -672,7 +679,10 @@ mod test {
 
         // Double locking rejected.
         assert_eq!(
-            h.agreement.try_lock_deposit(&id, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_lock_deposit(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::DepositAlreadyLocked
         );
 
@@ -688,7 +698,10 @@ mod test {
             )
             .unwrap();
         assert_eq!(
-            h.agreement.try_lock_deposit(&early, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_lock_deposit(&early, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
     }
@@ -708,7 +721,10 @@ mod test {
 
         // Requesting again is an invalid transition.
         assert_eq!(
-            h.agreement.try_request_move_out(&id, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_request_move_out(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 
@@ -791,7 +807,8 @@ mod test {
                     &(DEPOSIT + 1),
                     &SorobanString::from_str(&h.env, "x")
                 )
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidDeduction
         );
 
@@ -815,7 +832,10 @@ mod test {
 
         // Double settlement is impossible.
         assert_eq!(
-            h.agreement.try_accept_deduction(&id, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_accept_deduction(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::SettlementAlreadyExecuted
         );
 
@@ -826,7 +846,10 @@ mod test {
         );
         // Closing again fails (already CLOSED).
         assert_eq!(
-            h.agreement.try_close_agreement(&id, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_close_agreement(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
     }
@@ -899,7 +922,8 @@ mod test {
         assert_eq!(
             h.agreement
                 .try_close_agreement(&fresh, &h.landlord)
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 
@@ -918,7 +942,10 @@ mod test {
         h.agreement.approve_inspection(&done, &h.landlord).unwrap();
         h.agreement.close_agreement(&done, &h.tenant).unwrap();
         assert_eq!(
-            h.agreement.try_join_agreement(&done, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_join_agreement(&done, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 
@@ -932,7 +959,8 @@ mod test {
                     &EvidenceType::MoveOut,
                     &SorobanString::from_str(&h.env, "hash"),
                 )
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 
@@ -940,7 +968,8 @@ mod test {
         assert_eq!(
             h.agreement
                 .try_approve_inspection(&active_only, &h.landlord)
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 
@@ -952,7 +981,8 @@ mod test {
                     &h.tenant,
                     &SorobanString::from_str(&h.env, "no")
                 )
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
     }
@@ -965,20 +995,29 @@ mod test {
 
         // Tenant cannot approve inspections.
         assert_eq!(
-            h.agreement.try_approve_inspection(&id, &h.tenant).unwrap_err().unwrap(),
+            h.agreement
+                .try_approve_inspection(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
 
         // Move-out is tenant-only — the landlord is a party but not the tenant.
         h.agreement.request_move_out(&id, &h.tenant).unwrap();
         assert_eq!(
-            h.agreement.try_request_move_out(&id, &h.landlord).unwrap_err().unwrap(),
+            h.agreement
+                .try_request_move_out(&id, &h.landlord)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
 
         // Strangers are not the tenant.
         assert_eq!(
-            h.agreement.try_request_move_out(&id, &stranger).unwrap_err().unwrap(),
+            h.agreement
+                .try_request_move_out(&id, &stranger)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
         assert_eq!(
@@ -989,13 +1028,17 @@ mod test {
                     &EvidenceType::Other,
                     &SorobanString::from_str(&h.env, "x"),
                 )
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::NotParty
         );
 
         // A stranger cannot close.
         assert_eq!(
-            h.agreement.try_close_agreement(&id, &stranger).unwrap_err().unwrap(),
+            h.agreement
+                .try_close_agreement(&id, &stranger)
+                .unwrap_err()
+                .unwrap(),
             Error::NotParty
         );
 
@@ -1015,7 +1058,8 @@ mod test {
                     &RENT,
                     &0i128,
                 )
-                .unwrap_err().unwrap(),
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
     }

@@ -16,7 +16,9 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Sy
 
 use tr_common::escrow_api::EscrowClient;
 use tr_common::events;
-use tr_common::{DisputeRecord, DisputeState, Error, EvidenceRecord, EvidenceType, TryClientResult};
+use tr_common::{
+    DisputeRecord, DisputeState, Error, EvidenceRecord, EvidenceType, TryClientResult,
+};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -339,15 +341,14 @@ mod test {
         landlord: &Address,
         tenant: &Address,
     ) {
-        client
-            .open_dispute(
-                &agreement_id,
-                initiator,
-                landlord,
-                tenant,
-                &SorobanString::from_str(env, "deposit withheld"),
-                agreement,
-            );
+        client.open_dispute(
+            &agreement_id,
+            initiator,
+            landlord,
+            tenant,
+            &SorobanString::from_str(env, "deposit withheld"),
+            agreement,
+        );
     }
 
     #[test]
@@ -387,19 +388,12 @@ mod test {
         open_helper(&env, &client, &agreement, 1, &tenant, &landlord, &tenant);
 
         // Landlord proposes a split: tenant 25k, landlord 5k.
-        client
-            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
-        assert_eq!(
-            client.get_dispute(&1u32).state,
-            DisputeState::UnderReview
-        );
+        client.propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
+        assert_eq!(client.get_dispute(&1u32).state, DisputeState::UnderReview);
 
         // Tenant accepts.
         client.accept_resolution(&1u32, &tenant);
-        assert_eq!(
-            client.get_dispute(&1u32).state,
-            DisputeState::Accepted
-        );
+        assert_eq!(client.get_dispute(&1u32).state, DisputeState::Accepted);
 
         // Either party executes; escrow settles the split.
         client.resolve_dispute(&1u32, &tenant);
@@ -413,7 +407,10 @@ mod test {
 
         // The dispute contract cannot be used twice for the same agreement.
         assert_eq!(
-            client.try_resolve_dispute(&1u32, &landlord).unwrap_err().unwrap(),
+            client
+                .try_resolve_dispute(&1u32, &landlord)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
     }
@@ -456,10 +453,12 @@ mod test {
                 .unwrap(),
             Error::Unauthorized
         );
-        client
-            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
+        client.propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
         assert_eq!(
-            client.try_accept_resolution(&1u32, &landlord).unwrap_err().unwrap(),
+            client
+                .try_accept_resolution(&1u32, &landlord)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
 
@@ -477,7 +476,10 @@ mod test {
             Error::NotParty
         );
         assert_eq!(
-            client.try_resolve_dispute(&1u32, &stranger).unwrap_err().unwrap(),
+            client
+                .try_resolve_dispute(&1u32, &stranger)
+                .unwrap_err()
+                .unwrap(),
             Error::NotParty
         );
     }
@@ -536,10 +538,12 @@ mod test {
         );
 
         // Cannot resolve before the tenant accepts.
-        client
-            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
+        client.propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
         assert_eq!(
-            client.try_resolve_dispute(&1u32, &tenant).unwrap_err().unwrap(),
+            client
+                .try_resolve_dispute(&1u32, &tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 

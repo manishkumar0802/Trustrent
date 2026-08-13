@@ -322,10 +322,8 @@ impl<T, E> TryClientResult<T, E> for Result<Result<T, E>, Result<Error, InvokeEr
             // The callee returned one of our contract errors — propagate it.
             Err(Ok(e)) => Err(e),
             // The callee panicked or returned an unrecognized error.
-            Err(Err(invoke)) => Err(
-                Error::try_from(invoke)
-                    .unwrap_or_else(|_| panic!("cross-contract call failed: {invoke:?}")),
-            ),
+            Err(Err(invoke)) => Err(Error::try_from(invoke)
+                .unwrap_or_else(|_| panic!("cross-contract call failed: {invoke:?}"))),
         }
     }
 }
