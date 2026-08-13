@@ -16,7 +16,7 @@
 //! rejected; releases rejected while the deposit is dispute-locked; dispute
 //! settlements only from the dispute contract and only while dispute-locked.
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, Symbol};
 
 use tr_common::events;
 use tr_common::{DepositRecord, DepositStatus, Error};
@@ -45,6 +45,9 @@ impl EscrowContract {
         dispute_contract: Address,
     ) {
         admin.require_auth();
+        if env.storage().persistent().has(&DataKey::Admin) {
+            panic_with_error!(&env, Error::AlreadyInitialized);
+        }
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
@@ -79,10 +82,12 @@ impl EscrowContract {
 
         let deposit = DepositRecord {
             agreement_id,
-            tenant,
-            landlord,
+            tenant: tenant.clone(),
+            landlord: landlord.clone(),
             amount,
             released: 0,
+            released_to_tenant: 0,
+            released_to_landlord: 0,
             status: DepositStatus::Locked,
             locked_at: env.ledger().timestamp(),
         };
@@ -92,7 +97,7 @@ impl EscrowContract {
 
         env.events().publish(
             (Symbol::new(&env, events::DEPOSIT_LOCKED),),
-            (agreement_id, amount),
+            (agreement_id, tenant, landlord, amount),
         );
         Ok(())
     }
@@ -118,6 +123,7 @@ impl EscrowContract {
 
         let amount = deposit.amount - deposit.released;
         deposit.released = deposit.amount;
+        deposit.released_to_tenant += amount;
         deposit.status = DepositStatus::Released;
         env.storage()
             .persistent()
@@ -125,7 +131,7 @@ impl EscrowContract {
 
         env.events().publish(
             (Symbol::new(&env, events::DEPOSIT_RELEASED),),
-            (agreement_id, amount),
+            (agreement_id, amount, 0i128, deposit.released),
         );
         Ok(())
     }
@@ -149,10 +155,16 @@ impl EscrowContract {
         }
 
         let total = validate_split(to_tenant, to_landlord)?;
-        if deposit.released + total > deposit.amount {
+        let remaining = deposit.amount - deposit.released;
+        // A completed settlement must allocate every remaining unit. Allowing
+        // a partial release here would leave funds stranded with no recovery
+        // path in the agreement state machine.
+        if total != remaining {
             return Err(Error::InvalidAmount);
         }
         deposit.released += total;
+        deposit.released_to_tenant += to_tenant;
+        deposit.released_to_landlord += to_landlord;
         deposit.status = if deposit.released == deposit.amount {
             DepositStatus::Released
         } else {
@@ -164,7 +176,7 @@ impl EscrowContract {
 
         env.events().publish(
             (Symbol::new(&env, events::DEPOSIT_RELEASED),),
-            (agreement_id, total),
+            (agreement_id, to_tenant, to_landlord, deposit.released),
         );
         Ok(())
     }
@@ -176,13 +188,21 @@ impl EscrowContract {
         caller.require_auth();
         require_caller(&env, &DataKey::DisputeContract, &caller)?;
         let mut deposit = load_deposit(&env, agreement_id)?;
-        if deposit.status == DepositStatus::Released {
-            return Err(Error::DepositAlreadyReleased);
+        if deposit.status != DepositStatus::Locked {
+            return Err(if deposit.status == DepositStatus::Released {
+                Error::DepositAlreadyReleased
+            } else {
+                Error::InvalidState
+            });
         }
         deposit.status = DepositStatus::Disputed;
         env.storage()
             .persistent()
             .set(&DataKey::Deposit(agreement_id), &deposit);
+        env.events().publish(
+            (Symbol::new(&env, events::DEPOSIT_DISPUTED),),
+            (agreement_id, deposit.amount - deposit.released),
+        );
         Ok(())
     }
 
@@ -205,10 +225,13 @@ impl EscrowContract {
         }
 
         let total = validate_split(to_tenant, to_landlord)?;
-        if deposit.released + total > deposit.amount {
+        let remaining = deposit.amount - deposit.released;
+        if total != remaining {
             return Err(Error::InvalidAmount);
         }
         deposit.released += total;
+        deposit.released_to_tenant += to_tenant;
+        deposit.released_to_landlord += to_landlord;
         deposit.status = if deposit.released == deposit.amount {
             DepositStatus::Released
         } else {
@@ -220,7 +243,7 @@ impl EscrowContract {
 
         env.events().publish(
             (Symbol::new(&env, events::DEPOSIT_RELEASED),),
-            (agreement_id, total),
+            (agreement_id, to_tenant, to_landlord, deposit.released),
         );
         Ok(())
     }
@@ -250,7 +273,9 @@ fn validate_split(to_tenant: i128, to_landlord: i128) -> Result<i128, Error> {
     if to_tenant < 0 || to_landlord < 0 {
         return Err(Error::InvalidAmount);
     }
-    let total = to_tenant + to_landlord;
+    let total = to_tenant
+        .checked_add(to_landlord)
+        .ok_or(Error::InvalidAmount)?;
     if total <= 0 {
         return Err(Error::InvalidAmount);
     }
@@ -365,7 +390,7 @@ mod test {
     }
 
     #[test]
-    fn partial_release_split() {
+    fn settlement_must_allocate_the_entire_locked_deposit() {
         let (env, contract_id, agreement, _dispute) = setup();
         let client = EscrowContractClient::new(&env, &contract_id);
         let tenant = Address::generate(&env);
@@ -373,15 +398,29 @@ mod test {
 
         client.lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement);
 
-        client.release_partial(&1u32, &20_000_000_000i128, &0i128, &agreement);
+        assert_eq!(
+            client
+                .try_release_partial(&1u32, &20_000_000_000i128, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
+            Error::InvalidAmount
+        );
         let deposit = client.get_deposit(&1u32);
-        assert_eq!(deposit.released, 20_000_000_000i128);
-        assert_eq!(deposit.status, DepositStatus::PartiallyReleased);
+        assert_eq!(deposit.released, 0);
+        assert_eq!(deposit.amount - deposit.released, 30_000_000_000i128);
+        assert_eq!(deposit.status, DepositStatus::Locked);
 
         // Release the remainder — status becomes Released.
-        client.release_partial(&1u32, &0i128, &10_000_000_000i128, &agreement);
+        client.release_partial(
+            &1u32,
+            &20_000_000_000i128,
+            &10_000_000_000i128,
+            &agreement,
+        );
         let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 30_000_000_000i128);
+        assert_eq!(deposit.released_to_tenant, 20_000_000_000i128);
+        assert_eq!(deposit.released_to_landlord, 10_000_000_000i128);
         assert_eq!(deposit.status, DepositStatus::Released);
 
         // Anything after full release is rejected.

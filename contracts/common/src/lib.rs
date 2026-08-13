@@ -111,6 +111,10 @@ pub enum Error {
     DepositNotFound = 14,
     /// `initialize` has not been called / contract addresses not configured.
     NotInitialized = 15,
+    /// `initialize` may only be called once; configuration is immutable.
+    AlreadyInitialized = 16,
+    /// The same evidence hash has already been recorded for this agreement.
+    DuplicateEvidence = 17,
 }
 
 /// Core agreement record stored by `rental_agreement`.
@@ -141,8 +145,11 @@ pub struct DepositRecord {
     pub tenant: Address,
     pub landlord: Address,
     pub amount: i128,
-    /// Amount already released from the lock.
+    /// Total amount released from the lock. This is always the sum of the
+    /// recipient allocations below.
     pub released: i128,
+    pub released_to_tenant: i128,
+    pub released_to_landlord: i128,
     pub status: DepositStatus,
     pub locked_at: u64,
 }
@@ -191,6 +198,9 @@ pub mod events {
     pub const DISPUTE_OPENED: &str = "DisputeOpened";
     pub const DISPUTE_RESOLVED: &str = "DisputeResolved";
     pub const DEPOSIT_RELEASED: &str = "DepositReleased";
+    pub const DEPOSIT_DISPUTED: &str = "DepositDisputed";
+    pub const INSPECTION_STARTED: &str = "InspectionStarted";
+    pub const DISPUTE_RESOLUTION_PROPOSED: &str = "DisputeResolutionProposed";
     pub const AGREEMENT_CLOSED: &str = "AgreementClosed";
 }
 

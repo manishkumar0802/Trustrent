@@ -20,7 +20,7 @@
 //! INSPECTION_PENDING → DISPUTED → RESOLVED → SETTLEMENT → CLOSED.
 //! Invalid transitions return `Error::InvalidState`.
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, String, Symbol};
 
 use tr_common::dispute_api::DisputeClient;
 use tr_common::escrow_api::EscrowClient;
@@ -40,6 +40,7 @@ pub enum DataKey {
     EvidenceCounter,
     Agreement(u32),
     Evidence(u32),
+    EvidenceHash(u32, String),
 }
 
 #[contract]
@@ -56,6 +57,9 @@ impl AgreementContract {
         dispute_contract: Address,
     ) {
         admin.require_auth();
+        if env.storage().persistent().has(&DataKey::Admin) {
+            panic_with_error!(&env, Error::AlreadyInitialized);
+        }
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
@@ -193,6 +197,21 @@ impl AgreementContract {
             return Err(Error::InvalidState);
         }
 
+        // A move-out is meaningful only after the agreed deposit is locked.
+        // This avoids advancing the agreement into a settlement path with no
+        // funds available for a refund or a dispute.
+        let escrow_contract: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::EscrowContract)
+            .ok_or(Error::NotInitialized)?;
+        let deposit = EscrowClient::new(&env, &escrow_contract)
+            .try_get_deposit(&agreement_id)
+            .into_result()?;
+        if deposit.status != tr_common::DepositStatus::Locked {
+            return Err(Error::InvalidState);
+        }
+
         record.state = AgreementState::MoveOutRequested;
         env.storage()
             .persistent()
@@ -229,25 +248,36 @@ impl AgreementContract {
         if !in_move_out_flow {
             return Err(Error::InvalidState);
         }
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::EvidenceHash(agreement_id, content_hash.clone()))
+        {
+            return Err(Error::DuplicateEvidence);
+        }
 
         let counter: u32 = env
             .storage()
             .persistent()
             .get(&DataKey::EvidenceCounter)
             .unwrap_or(0);
-        let evidence_id = counter + 1;
+        let evidence_id = counter.checked_add(1).ok_or(Error::InvalidState)?;
 
         let evidence = EvidenceRecord {
             id: evidence_id,
             agreement_id,
             evidence_type,
-            content_hash,
+            content_hash: content_hash.clone(),
             submitted_by: submitter,
             timestamp: env.ledger().timestamp(),
         };
         env.storage()
             .persistent()
             .set(&DataKey::Evidence(evidence_id), &evidence);
+        env.storage().persistent().set(
+            &DataKey::EvidenceHash(agreement_id, content_hash),
+            &evidence_id,
+        );
         env.storage()
             .persistent()
             .set(&DataKey::EvidenceCounter, &evidence_id);
@@ -279,6 +309,10 @@ impl AgreementContract {
         match record.state {
             AgreementState::EvidenceSubmitted => {
                 record.state = AgreementState::InspectionPending;
+                env.events().publish(
+                    (Symbol::new(&env, events::INSPECTION_STARTED),),
+                    (agreement_id,),
+                );
             }
             AgreementState::InspectionPending => {
                 record.state = AgreementState::Approved;
@@ -711,6 +745,15 @@ mod test {
         let h = setup();
         let id = create_and_join(&h);
 
+        assert_eq!(
+            h.agreement
+                .try_request_move_out(&id, &h.tenant)
+                .unwrap_err()
+                .unwrap(),
+            Error::DepositNotFound
+        );
+        h.agreement.lock_deposit(&id, &h.tenant).unwrap();
+
         // Move-out before the deposit is locked is fine — but the state must
         // be ACTIVE.
         h.agreement.request_move_out(&id, &h.tenant).unwrap();
@@ -749,6 +792,19 @@ mod test {
         assert_eq!(
             evidence.content_hash,
             SorobanString::from_str(&h.env, "QmZ9f3kXp...")
+        );
+
+        assert_eq!(
+            h.agreement
+                .try_submit_evidence(
+                    &id,
+                    &h.landlord,
+                    &EvidenceType::DamageEvidence,
+                    &SorobanString::from_str(&h.env, "QmZ9f3kXp..."),
+                )
+                .unwrap_err()
+                .unwrap(),
+            Error::DuplicateEvidence
         );
 
         // The landlord can submit damage evidence too (still in the flow).
@@ -992,6 +1048,8 @@ mod test {
         let h = setup();
         let id = create_and_join(&h);
         let stranger = Address::generate(&h.env);
+
+        h.agreement.lock_deposit(&id, &h.tenant).unwrap();
 
         // Tenant cannot approve inspections.
         assert_eq!(

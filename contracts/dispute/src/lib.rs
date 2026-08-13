@@ -12,7 +12,7 @@
 //! Flow: open_dispute → propose_resolution (landlord) → accept_resolution
 //! (tenant) → resolve_dispute (either party executes the accepted split).
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Symbol};
+use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, String, Symbol};
 
 use tr_common::escrow_api::EscrowClient;
 use tr_common::events;
@@ -29,6 +29,7 @@ pub enum DataKey {
     EvidenceCounter,
     Dispute(u32),
     Evidence(u32),
+    EvidenceHash(u32, String),
 }
 
 #[contract]
@@ -45,6 +46,9 @@ impl DisputeContract {
         escrow_contract: Address,
     ) {
         admin.require_auth();
+        if env.storage().persistent().has(&DataKey::Admin) {
+            panic_with_error!(&env, Error::AlreadyInitialized);
+        }
         env.storage().persistent().set(&DataKey::Admin, &admin);
         env.storage()
             .persistent()
@@ -134,25 +138,36 @@ impl DisputeContract {
         if record.state == DisputeState::Resolved {
             return Err(Error::InvalidState);
         }
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::EvidenceHash(agreement_id, content_hash.clone()))
+        {
+            return Err(Error::DuplicateEvidence);
+        }
 
         let counter: u32 = env
             .storage()
             .persistent()
             .get(&DataKey::EvidenceCounter)
             .unwrap_or(0);
-        let evidence_id = counter + 1;
+        let evidence_id = counter.checked_add(1).ok_or(Error::InvalidState)?;
 
         let evidence = EvidenceRecord {
             id: evidence_id,
             agreement_id,
             evidence_type,
-            content_hash,
+            content_hash: content_hash.clone(),
             submitted_by: submitter,
             timestamp: env.ledger().timestamp(),
         };
         env.storage()
             .persistent()
             .set(&DataKey::Evidence(evidence_id), &evidence);
+        env.storage().persistent().set(
+            &DataKey::EvidenceHash(agreement_id, content_hash),
+            &evidence_id,
+        );
         env.storage()
             .persistent()
             .set(&DataKey::EvidenceCounter, &evidence_id);
@@ -180,7 +195,10 @@ impl DisputeContract {
         if record.state != DisputeState::Opened {
             return Err(Error::InvalidState);
         }
-        if to_tenant < 0 || to_landlord < 0 || to_tenant + to_landlord <= 0 {
+        let total = to_tenant
+            .checked_add(to_landlord)
+            .ok_or(Error::InvalidAmount)?;
+        if to_tenant < 0 || to_landlord < 0 || total <= 0 {
             return Err(Error::InvalidAmount);
         }
         // Bound the split by the locked deposit (Dispute → Escrow read): a
@@ -194,7 +212,10 @@ impl DisputeContract {
         let deposit = EscrowClient::new(&env, &escrow_contract)
             .try_get_deposit(&agreement_id)
             .into_result()?;
-        if to_tenant + to_landlord > deposit.amount {
+        // A dispute resolution must allocate the entire remaining lock. This
+        // prevents a resolved dispute from orphaning unreleased funds.
+        let remaining = deposit.amount - deposit.released;
+        if total != remaining {
             return Err(Error::InvalidAmount);
         }
 
@@ -206,8 +227,8 @@ impl DisputeContract {
             .set(&DataKey::Dispute(agreement_id), &record);
 
         env.events().publish(
-            (Symbol::new(&env, events::DEDUCTION_PROPOSED),),
-            (agreement_id, to_tenant + to_landlord),
+            (Symbol::new(&env, events::DISPUTE_RESOLUTION_PROPOSED),),
+            (agreement_id, to_tenant, to_landlord),
         );
         Ok(())
     }
