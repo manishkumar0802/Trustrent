@@ -16,7 +16,7 @@ use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String, Sy
 
 use tr_common::escrow_api::EscrowClient;
 use tr_common::events;
-use tr_common::{DisputeRecord, DisputeState, Error, EvidenceRecord, EvidenceType};
+use tr_common::{DisputeRecord, DisputeState, Error, EvidenceRecord, EvidenceType, TryClientResult};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -105,7 +105,9 @@ impl DisputeContract {
             .get(&DataKey::EscrowContract)
             .ok_or(Error::NotInitialized)?;
         let caller_addr = env.current_contract_address();
-        EscrowClient::new(&env, &escrow_contract).lock_for_dispute(&agreement_id, &caller_addr)?;
+        EscrowClient::new(&env, &escrow_contract)
+            .try_lock_for_dispute(&agreement_id, &caller_addr)
+            .into_result()?;
 
         env.events().publish(
             (Symbol::new(&env, events::DISPUTE_OPENED),),
@@ -187,7 +189,9 @@ impl DisputeContract {
             .persistent()
             .get(&DataKey::EscrowContract)
             .ok_or(Error::NotInitialized)?;
-        let deposit = EscrowClient::new(&env, &escrow_contract).get_deposit(&agreement_id)?;
+        let deposit = EscrowClient::new(&env, &escrow_contract)
+            .try_get_deposit(&agreement_id)
+            .into_result()?;
         if to_tenant + to_landlord > deposit.amount {
             return Err(Error::InvalidAmount);
         }
@@ -248,12 +252,14 @@ impl DisputeContract {
             .get(&DataKey::EscrowContract)
             .ok_or(Error::NotInitialized)?;
         let caller_addr = env.current_contract_address();
-        EscrowClient::new(&env, &escrow_contract).settle_dispute(
-            &agreement_id,
-            &record.to_tenant,
-            &record.to_landlord,
-            &caller_addr,
-        )?;
+        EscrowClient::new(&env, &escrow_contract)
+            .try_settle_dispute(
+                &agreement_id,
+                &record.to_tenant,
+                &record.to_landlord,
+                &caller_addr,
+            )
+            .into_result()?;
 
         record.state = DisputeState::Resolved;
         record.resolved_at = Some(env.ledger().timestamp());
@@ -306,14 +312,7 @@ mod test {
 
     /// Registers the real escrow contract alongside the dispute contract so
     /// the Dispute → Escrow cross-contract calls execute against real state.
-    fn setup() -> (
-        Env,
-        DisputeContractClient,
-        Address,
-        Address,
-        Address,
-        Address,
-    ) {
+    fn setup() -> (Env, Address, Address, Address) {
         let env = Env::default();
         env.mock_all_auths();
 
@@ -328,12 +327,12 @@ mod test {
         let client = DisputeContractClient::new(&env, &dispute_id);
         client.initialize(&admin, &agreement, &escrow_id);
 
-        (env, client, agreement, escrow_id, admin, dispute_id)
+        (env, dispute_id, agreement, escrow_id)
     }
 
     fn open_helper(
         env: &Env,
-        client: &DisputeContractClient,
+        client: &DisputeContractClient<'_>,
         agreement: &Address,
         agreement_id: u32,
         initiator: &Address,
@@ -348,86 +347,81 @@ mod test {
                 tenant,
                 &SorobanString::from_str(env, "deposit withheld"),
                 agreement,
-            )
-            .unwrap();
+            );
     }
 
     #[test]
     fn opening_freezes_the_deposit() {
-        let (env, client, agreement, escrow_id, _admin, _dispute_id) = setup();
+        let (env, dispute_id, agreement, escrow_id) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         // Tenant locks the deposit through the (simulated) agreement contract.
         EscrowClient::new(&env, &escrow_id)
-            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
 
         open_helper(&env, &client, &agreement, 1, &tenant, &landlord, &tenant);
 
-        let dispute = client.get_dispute(&1u32).unwrap();
+        let dispute = client.get_dispute(&1u32);
         assert_eq!(dispute.state, DisputeState::Opened);
         assert_eq!(dispute.initiator, tenant);
         assert_eq!(dispute.landlord, landlord);
         assert_eq!(dispute.tenant, tenant);
 
         // The deposit is frozen in escrow.
-        let deposit = EscrowClient::new(&env, &escrow_id)
-            .get_deposit(&1u32)
-            .unwrap();
+        let deposit = EscrowClient::new(&env, &escrow_id).get_deposit(&1u32);
         assert_eq!(deposit.status, DepositStatus::Disputed);
         assert_eq!(deposit.released, 0);
     }
 
     #[test]
     fn full_dispute_flow_settles_escrow() {
-        let (env, client, agreement, escrow_id, _admin, _dispute_id) = setup();
+        let (env, dispute_id, agreement, escrow_id) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         EscrowClient::new(&env, &escrow_id)
-            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
         open_helper(&env, &client, &agreement, 1, &tenant, &landlord, &tenant);
 
         // Landlord proposes a split: tenant 25k, landlord 5k.
         client
-            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128)
-            .unwrap();
+            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
         assert_eq!(
-            client.get_dispute(&1u32).unwrap().state,
+            client.get_dispute(&1u32).state,
             DisputeState::UnderReview
         );
 
         // Tenant accepts.
-        client.accept_resolution(&1u32, &tenant).unwrap();
+        client.accept_resolution(&1u32, &tenant);
         assert_eq!(
-            client.get_dispute(&1u32).unwrap().state,
+            client.get_dispute(&1u32).state,
             DisputeState::Accepted
         );
 
         // Either party executes; escrow settles the split.
-        client.resolve_dispute(&1u32, &tenant).unwrap();
-        let dispute = client.get_dispute(&1u32).unwrap();
+        client.resolve_dispute(&1u32, &tenant);
+        let dispute = client.get_dispute(&1u32);
         assert_eq!(dispute.state, DisputeState::Resolved);
         assert!(dispute.resolved_at.is_some());
 
-        let deposit = EscrowClient::new(&env, &escrow_id)
-            .get_deposit(&1u32)
-            .unwrap();
+        let deposit = EscrowClient::new(&env, &escrow_id).get_deposit(&1u32);
         assert_eq!(deposit.released, DEPOSIT);
         assert_eq!(deposit.status, DepositStatus::Released);
 
         // The dispute contract cannot be used twice for the same agreement.
         assert_eq!(
-            client.resolve_dispute(&1u32, &landlord).unwrap_err(),
+            client.try_resolve_dispute(&1u32, &landlord).unwrap_err().unwrap(),
             Error::InvalidState
         );
     }
 
     #[test]
     fn unauthorized_calls_are_rejected() {
-        let (env, client, agreement, escrow_id, _admin, _dispute_id) = setup();
+        let (env, dispute_id, agreement, escrow_id) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
         let stranger = Address::generate(&env);
@@ -435,7 +429,7 @@ mod test {
         // Only the agreement contract can open a dispute.
         assert_eq!(
             client
-                .open_dispute(
+                .try_open_dispute(
                     &1u32,
                     &tenant,
                     &landlord,
@@ -443,66 +437,67 @@ mod test {
                     &SorobanString::from_str(&env, "x"),
                     &stranger,
                 )
-                .unwrap_err(),
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
 
         // A dispute freezes an existing deposit, so one must be locked first.
         EscrowClient::new(&env, &escrow_id)
-            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
 
         open_helper(&env, &client, &agreement, 1, &tenant, &landlord, &tenant);
 
         // Only the landlord proposes, only the tenant accepts.
         assert_eq!(
             client
-                .propose_resolution(&1u32, &tenant, &25_000_000_000i128, &5_000_000_000i128)
-                .unwrap_err(),
+                .try_propose_resolution(&1u32, &tenant, &25_000_000_000i128, &5_000_000_000i128)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
         client
-            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128)
-            .unwrap();
+            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
         assert_eq!(
-            client.accept_resolution(&1u32, &landlord).unwrap_err(),
+            client.try_accept_resolution(&1u32, &landlord).unwrap_err().unwrap(),
             Error::Unauthorized
         );
 
         // A stranger cannot submit evidence or resolve.
         assert_eq!(
             client
-                .submit_dispute_evidence(
+                .try_submit_dispute_evidence(
                     &1u32,
                     &stranger,
                     &EvidenceType::DamageEvidence,
                     &SorobanString::from_str(&env, "Qm..."),
                 )
-                .unwrap_err(),
+                .unwrap_err()
+                .unwrap(),
             Error::NotParty
         );
         assert_eq!(
-            client.resolve_dispute(&1u32, &stranger).unwrap_err(),
+            client.try_resolve_dispute(&1u32, &stranger).unwrap_err().unwrap(),
             Error::NotParty
         );
     }
 
     #[test]
     fn guards_on_state_and_amounts() {
-        let (env, client, agreement, escrow_id, _admin, _dispute_id) = setup();
+        let (env, dispute_id, agreement, escrow_id) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         // A dispute freezes an existing deposit, so one must be locked first.
         EscrowClient::new(&env, &escrow_id)
-            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
 
         // Double open rejected.
         open_helper(&env, &client, &agreement, 1, &tenant, &landlord, &tenant);
         assert_eq!(
             client
-                .open_dispute(
+                .try_open_dispute(
                     &1u32,
                     &tenant,
                     &landlord,
@@ -510,44 +505,47 @@ mod test {
                     &SorobanString::from_str(&env, "again"),
                     &agreement,
                 )
-                .unwrap_err(),
+                .unwrap_err()
+                .unwrap(),
             Error::DisputeAlreadyOpen
         );
 
         // Invalid splits rejected.
         assert_eq!(
             client
-                .propose_resolution(&1u32, &landlord, &-1i128, &0i128)
-                .unwrap_err(),
+                .try_propose_resolution(&1u32, &landlord, &-1i128, &0i128)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
         assert_eq!(
             client
-                .propose_resolution(&1u32, &landlord, &0i128, &0i128)
-                .unwrap_err(),
+                .try_propose_resolution(&1u32, &landlord, &0i128, &0i128)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
         // A split exceeding the locked deposit is rejected via the
         // Dispute → Escrow read.
         assert_eq!(
             client
-                .propose_resolution(&1u32, &landlord, &40_000_000_000i128, &0i128)
-                .unwrap_err(),
+                .try_propose_resolution(&1u32, &landlord, &40_000_000_000i128, &0i128)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
 
         // Cannot resolve before the tenant accepts.
         client
-            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128)
-            .unwrap();
+            .propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
         assert_eq!(
-            client.resolve_dispute(&1u32, &tenant).unwrap_err(),
+            client.try_resolve_dispute(&1u32, &tenant).unwrap_err().unwrap(),
             Error::InvalidState
         );
 
         // Unknown dispute not found.
         assert_eq!(
-            client.get_dispute(&42u32).unwrap_err(),
+            client.try_get_dispute(&42u32).unwrap_err().unwrap(),
             Error::DisputeNotFound
         );
     }

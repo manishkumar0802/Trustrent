@@ -16,7 +16,7 @@
 //! `initialize`. This is the mechanism that stops unauthorized contracts and
 //! arbitrary parties from moving funds. See `ARCHITECTURE.md`.
 
-use soroban_sdk::{contractclient, contracterror, contracttype, Address, Env, String};
+use soroban_sdk::{contractclient, contracterror, contracttype, Address, Env, InvokeError, String};
 
 /// Lifecycle state of a rental agreement.
 ///
@@ -294,5 +294,38 @@ pub mod dispute_api {
         fn resolve_dispute(env: Env, agreement_id: u32, caller: Address) -> Result<(), Error>;
 
         fn get_dispute(env: Env, agreement_id: u32) -> Result<DisputeRecord, Error>;
+    }
+}
+
+/// Converts the nested `Result` returned by a `try_*` cross-contract client
+/// method (Soroban SDK 22) into a plain `Result<T, Error>` so the callee's
+/// errors can propagate with `?`.
+///
+/// In SDK 22 the plain client methods (e.g. `lock_deposit`) return the value
+/// directly and panic on error; the `try_` variants return
+/// `Result<Result<T, _>, Result<Error, InvokeError>>`. `into_result` unwraps
+/// that shape: a contract error from the callee is returned as `Err(Error)`,
+/// while an unexpected value type or an aborted (panicked) callee is treated
+/// as a hard failure and panics.
+pub trait TryClientResult<T, E> {
+    fn into_result(self) -> Result<T, Error>;
+}
+
+impl<T, E> TryClientResult<T, E> for Result<Result<T, E>, Result<Error, InvokeError>> {
+    fn into_result(self) -> Result<T, Error> {
+        match self {
+            // Success — return the value.
+            Ok(Ok(t)) => Ok(t),
+            // The callee returned a value of an unexpected type; this is a
+            // programming error, so surface it loudly.
+            Ok(Err(_)) => panic!("cross-contract call returned an unexpected value"),
+            // The callee returned one of our contract errors — propagate it.
+            Err(Ok(e)) => Err(e),
+            // The callee panicked or returned an unrecognized error.
+            Err(Err(invoke)) => Err(
+                Error::try_from(invoke)
+                    .unwrap_or_else(|_| panic!("cross-contract call failed: {invoke:?}")),
+            ),
+        }
     }
 }

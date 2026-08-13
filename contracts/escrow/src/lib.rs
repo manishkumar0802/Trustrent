@@ -268,7 +268,7 @@ mod test {
     /// `caller` to simulate those contracts invoking (with `mock_all_auths`,
     /// `require_auth` passes for any address, exactly as the implicit
     /// contract-invoker auth behaves in production).
-    fn setup() -> (Env, EscrowContractClient, Address, Address) {
+    fn setup() -> (Env, Address, Address, Address) {
         let env = Env::default();
         env.mock_all_auths();
         let contract_id = env.register(EscrowContract, ());
@@ -277,20 +277,20 @@ mod test {
         let agreement = Address::generate(&env);
         let dispute = Address::generate(&env);
         client.initialize(&admin, &agreement, &dispute);
-        (env, client, agreement, dispute)
+        (env, contract_id, agreement, dispute)
     }
 
     #[test]
     fn lock_and_full_release() {
-        let (env, client, agreement, _dispute) = setup();
+        let (env, contract_id, agreement, _dispute) = setup();
+        let client = EscrowContractClient::new(&env, &contract_id);
         let tenant = Address::generate(&env);
         let landlord = Address::generate(&env);
 
         client
-            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement);
 
-        let deposit = client.get_deposit(&1u32).unwrap();
+        let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.amount, 30_000_000_000i128);
         assert_eq!(deposit.released, 0);
         assert_eq!(deposit.status, DepositStatus::Locked);
@@ -298,188 +298,196 @@ mod test {
         assert_eq!(deposit.landlord, landlord);
 
         // Authorized agreement contract releases in full.
-        client.release_full(&1u32, &agreement).unwrap();
-        let deposit = client.get_deposit(&1u32).unwrap();
+        client.release_full(&1u32, &agreement);
+        let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 30_000_000_000i128);
         assert_eq!(deposit.status, DepositStatus::Released);
 
         // Double release and double lock are rejected.
         assert_eq!(
-            client.release_full(&1u32, &agreement).unwrap_err(),
+            client.try_release_full(&1u32, &agreement).unwrap_err().unwrap(),
             Error::DepositAlreadyReleased
         );
         assert_eq!(
             client
-                .lock_deposit(&1u32, &tenant, &landlord, &1i128, &agreement)
-                .unwrap_err(),
+                .try_lock_deposit(&1u32, &tenant, &landlord, &1i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::DepositAlreadyLocked
         );
     }
 
     #[test]
     fn unauthorized_withdrawal_fails() {
-        let (env, client, agreement, _dispute) = setup();
+        let (env, contract_id, agreement, _dispute) = setup();
+        let client = EscrowContractClient::new(&env, &contract_id);
         let tenant = Address::generate(&env);
         let landlord = Address::generate(&env);
         let stranger = Address::generate(&env);
 
         client
-            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement);
 
         // Neither the tenant, nor the landlord, nor a stranger can withdraw.
         assert_eq!(
-            client.release_full(&1u32, &tenant).unwrap_err(),
+            client.try_release_full(&1u32, &tenant).unwrap_err().unwrap(),
             Error::Unauthorized
         );
         assert_eq!(
-            client.release_full(&1u32, &landlord).unwrap_err(),
+            client.try_release_full(&1u32, &landlord).unwrap_err().unwrap(),
             Error::Unauthorized
         );
         assert_eq!(
-            client.release_full(&1u32, &stranger).unwrap_err(),
+            client.try_release_full(&1u32, &stranger).unwrap_err().unwrap(),
             Error::Unauthorized
         );
         assert_eq!(
             client
-                .release_partial(&1u32, &20_000_000_000i128, &10_000_000_000i128, &tenant)
-                .unwrap_err(),
+                .try_release_partial(&1u32, &20_000_000_000i128, &10_000_000_000i128, &tenant)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
         // Deposit is untouched.
-        let deposit = client.get_deposit(&1u32).unwrap();
+        let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 0);
         assert_eq!(deposit.status, DepositStatus::Locked);
     }
 
     #[test]
     fn partial_release_split() {
-        let (env, client, agreement, _dispute) = setup();
+        let (env, contract_id, agreement, _dispute) = setup();
+        let client = EscrowContractClient::new(&env, &contract_id);
         let tenant = Address::generate(&env);
         let landlord = Address::generate(&env);
 
         client
-            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement);
 
         client
-            .release_partial(&1u32, &20_000_000_000i128, &0i128, &agreement)
-            .unwrap();
-        let deposit = client.get_deposit(&1u32).unwrap();
+            .release_partial(&1u32, &20_000_000_000i128, &0i128, &agreement);
+        let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 20_000_000_000i128);
         assert_eq!(deposit.status, DepositStatus::PartiallyReleased);
 
         // Release the remainder — status becomes Released.
         client
-            .release_partial(&1u32, &0i128, &10_000_000_000i128, &agreement)
-            .unwrap();
-        let deposit = client.get_deposit(&1u32).unwrap();
+            .release_partial(&1u32, &0i128, &10_000_000_000i128, &agreement);
+        let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 30_000_000_000i128);
         assert_eq!(deposit.status, DepositStatus::Released);
 
         // Anything after full release is rejected.
         assert_eq!(
             client
-                .release_partial(&1u32, &1i128, &0i128, &agreement)
-                .unwrap_err(),
+                .try_release_partial(&1u32, &1i128, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::DepositAlreadyReleased
         );
     }
 
     #[test]
     fn rejects_invalid_amounts() {
-        let (env, client, agreement, _dispute) = setup();
+        let (env, contract_id, agreement, _dispute) = setup();
+        let client = EscrowContractClient::new(&env, &contract_id);
         let tenant = Address::generate(&env);
         let landlord = Address::generate(&env);
 
         // Cannot lock zero or negative.
         assert_eq!(
             client
-                .lock_deposit(&1u32, &tenant, &landlord, &0i128, &agreement)
-                .unwrap_err(),
+                .try_lock_deposit(&1u32, &tenant, &landlord, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
         assert_eq!(
             client
-                .lock_deposit(&1u32, &tenant, &landlord, &-5i128, &agreement)
-                .unwrap_err(),
+                .try_lock_deposit(&1u32, &tenant, &landlord, &-5i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
 
         client
-            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement);
 
         // Negative / zero-total / over-release splits are rejected.
         assert_eq!(
             client
-                .release_partial(&1u32, &-1i128, &0i128, &agreement)
-                .unwrap_err(),
+                .try_release_partial(&1u32, &-1i128, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
         assert_eq!(
             client
-                .release_partial(&1u32, &0i128, &0i128, &agreement)
-                .unwrap_err(),
+                .try_release_partial(&1u32, &0i128, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
         assert_eq!(
             client
-                .release_partial(&1u32, &40_000_000_000i128, &0i128, &agreement)
-                .unwrap_err(),
+                .try_release_partial(&1u32, &40_000_000_000i128, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidAmount
         );
     }
 
     #[test]
     fn dispute_lock_and_settlement() {
-        let (env, client, agreement, dispute) = setup();
+        let (env, contract_id, agreement, dispute) = setup();
+        let client = EscrowContractClient::new(&env, &contract_id);
         let tenant = Address::generate(&env);
         let landlord = Address::generate(&env);
 
         client
-            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement)
-            .unwrap();
+            .lock_deposit(&1u32, &tenant, &landlord, &30_000_000_000i128, &agreement);
 
         // Dispute contract freezes the deposit.
-        client.lock_for_dispute(&1u32, &dispute).unwrap();
+        client.lock_for_dispute(&1u32, &dispute);
         assert_eq!(
-            client.get_deposit(&1u32).unwrap().status,
+            client.get_deposit(&1u32).status,
             DepositStatus::Disputed
         );
 
         // While dispute-locked, the agreement contract cannot release.
         assert_eq!(
-            client.release_full(&1u32, &agreement).unwrap_err(),
+            client.try_release_full(&1u32, &agreement).unwrap_err().unwrap(),
             Error::InvalidState
         );
         assert_eq!(
             client
-                .release_partial(&1u32, &30_000_000_000i128, &0i128, &agreement)
-                .unwrap_err(),
+                .try_release_partial(&1u32, &30_000_000_000i128, &0i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
 
         // Only the dispute contract can settle; only while dispute-locked.
         assert_eq!(
             client
-                .settle_dispute(&1u32, &25_000_000_000i128, &5_000_000_000i128, &agreement)
-                .unwrap_err(),
+                .try_settle_dispute(&1u32, &25_000_000_000i128, &5_000_000_000i128, &agreement)
+                .unwrap_err()
+                .unwrap(),
             Error::Unauthorized
         );
         client
-            .settle_dispute(&1u32, &25_000_000_000i128, &5_000_000_000i128, &dispute)
-            .unwrap();
+            .settle_dispute(&1u32, &25_000_000_000i128, &5_000_000_000i128, &dispute);
 
-        let deposit = client.get_deposit(&1u32).unwrap();
+        let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 30_000_000_000i128);
         assert_eq!(deposit.status, DepositStatus::Released);
 
         // Double settlement is impossible.
         assert_eq!(
             client
-                .settle_dispute(&1u32, &1i128, &0i128, &dispute)
-                .unwrap_err(),
+                .try_settle_dispute(&1u32, &1i128, &0i128, &dispute)
+                .unwrap_err()
+                .unwrap(),
             Error::InvalidState
         );
     }
