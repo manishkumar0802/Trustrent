@@ -558,7 +558,9 @@ mod test {
     use dispute::DisputeContract;
     use escrow::EscrowContract;
     use tr_common::escrow_api::EscrowClient;
+    use tr_common::registry_api::UserRegistryClient;
     use tr_common::{DepositStatus, DisputeState};
+    use user_registry::UserRegistryContract;
 
     const RENT: i128 = 18_000_000_000;
     const DEPOSIT: i128 = 30_000_000_000;
@@ -581,6 +583,7 @@ mod test {
         let agreement_id = env.register(AgreementContract, ());
         let escrow_id = env.register(EscrowContract, ());
         let dispute_id = env.register(DisputeContract, ());
+        let registry_id = env.register(UserRegistryContract, ());
 
         let admin = Address::generate(&env);
 
@@ -590,8 +593,9 @@ mod test {
         let client_env: &'static Env = Box::leak(Box::new(env.clone()));
 
         EscrowClient::new(client_env, &escrow_id).initialize(&admin, &agreement_id, &dispute_id);
+        UserRegistryClient::new(client_env, &registry_id).initialize(&admin);
         let dispute = DisputeClient::new(client_env, &dispute_id);
-        dispute.initialize(&admin, &agreement_id, &escrow_id);
+        dispute.initialize(&admin, &agreement_id, &escrow_id, &registry_id);
 
         let agreement = AgreementContractClient::new(client_env, &agreement_id);
         agreement.initialize(&admin, &escrow_id, &dispute_id);

@@ -38,6 +38,10 @@ disabled in tooling and scripts.
 │           │ cross-contract calls             │       │
 │  ┌────────▼─────────┐  freezes / settles ────┘       │
 │  │     dispute      │  the deposit during a dispute  │
+│  └───────┬──────────┘                                │
+│          │ reads arbitrator role                    │
+│  ┌───────▼──────────┐                                │
+│  │   user_registry  │  identity + reputation        │
 │  └──────────────────┘                                │
 └──────────────────────────────────────────────────────┘
           │ references only (hash/CID, never files)
@@ -52,17 +56,18 @@ Shared code:
 - **`@trustrent/shared`** — lifecycle order, event labels, formatting.
 - **`tr-common`** (Rust) — contract types, the shared `Error` catalog, event
   name constants, and the cross-contract interface traits (`escrow_api`,
-  `dispute_api`) used by the three Soroban contracts.
+  `dispute_api`, `registry_api`) used by the four Soroban contracts.
 
 ---
 
 ## 2. Contract responsibilities
 
-| Contract           | Responsibility                                                                                                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rental_agreement` | Orchestrator. Agreement lifecycle (`create → join → … → close`), role-based authorization, move-out and evidence flow, deduction proposal/acceptance, dispute delegation, settlement coordination. |
-| `escrow`           | Holds the deposit and controls its release. Tracks locked/released amounts and status. Refuses any withdrawal that is not triggered by the registered agreement or dispute contract.               |
-| `dispute`          | Dispute records, dispute evidence, resolution proposal/acceptance, and the settlement split. Never moves funds itself — it instructs escrow, which re-validates everything.                        |
+| Contract           | Responsibility                                                                                                                                                                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rental_agreement` | Orchestrator. Agreement lifecycle (`create → join → … → close`), role-based authorization, move-out and evidence flow, deduction proposal/acceptance, dispute delegation, settlement coordination.                                                                                |
+| `escrow`           | Holds the deposit and controls its release. Tracks locked/released amounts and status. Refuses any withdrawal that is not triggered by the registered agreement or dispute contract.                                                                                              |
+| `dispute`          | Dispute records, dispute evidence, resolution proposal/acceptance, and the settlement split. Assigns the platform arbitrator (verified against the registry); an arbitrator's decision is binding. Never moves funds itself — it instructs escrow, which re-validates everything. |
+| `user_registry`    | Identity directory: wallet → role (Landlord/Tenant/Arbitrator) + admin-managed reputation. Consulted by dispute to verify arbitrators; never touches funds.                                                                                                                       |
 
 No contract can move a deposit on its own:
 
@@ -119,17 +124,30 @@ settle_dispute(env, agreement_id: u32, to_tenant: i128, to_landlord: i128,
 ### `dispute` (DisputeContract)
 
 ```rust
-initialize(env, admin: Address, agreement_contract: Address, escrow_contract: Address)
+initialize(env, admin: Address, agreement_contract: Address, escrow_contract: Address,
+           user_registry: Address)
+set_arbitrator(env, admin: Address, arbitrator: Address) -> Result<(), Error>
+                                                                      // → registry.get_user (verify role)
 open_dispute(env, agreement_id: u32, initiator: Address, landlord: Address, tenant: Address,
              reason: String, caller: Address) -> Result<(), Error>   // caller == agreement_contract
                                                                      // → escrow.lock_for_dispute
 submit_dispute_evidence(env, agreement_id: u32, submitter: Address, evidence_type: EvidenceType,
                         content_hash: String) -> Result<u32, Error>
-propose_resolution(env, agreement_id: u32, landlord: Address,
+propose_resolution(env, agreement_id: u32, proposer: Address,
                    to_tenant: i128, to_landlord: i128) -> Result<(), Error>
+                     // landlord → Opened→UnderReview; assigned arbitrator → binding Opened→Accepted
 accept_resolution(env, agreement_id: u32, tenant: Address) -> Result<(), Error>
 resolve_dispute(env, agreement_id: u32, caller: Address) -> Result<(), Error>  // → escrow.settle_dispute
 get_dispute(env, agreement_id: u32) -> Result<DisputeRecord, Error>
+```
+
+### `user_registry` (UserRegistryContract)
+
+```rust
+initialize(env, admin: Address)
+register_user(env, admin: Address, user: Address, role: UserRole) -> Result<(), Error>
+set_reputation(env, admin: Address, user: Address, reputation: u32) -> Result<(), Error>
+get_user(env, user: Address) -> Result<UserRecord, Error>
 ```
 
 All amounts are in the smallest token unit (stroops) and are **bookkeeping
@@ -226,13 +244,22 @@ across contracts.
 
 **`dispute`**
 
-| Key                                   | Value                                                                           |
-| ------------------------------------- | ------------------------------------------------------------------------------- |
-| `Admin`                               | `Address`                                                                       |
-| `AgreementContract`, `EscrowContract` | `Address` (wiring)                                                              |
-| `EvidenceCounter`                     | `u32`                                                                           |
-| `Dispute(u32)`                        | `DisputeRecord` — initiator, parties, reason, state, accepted split, timestamps |
-| `Evidence(u32)`                       | `EvidenceRecord`                                                                |
+| Key                                   | Value                                                                              |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `Admin`                               | `Address`                                                                          |
+| `AgreementContract`, `EscrowContract` | `Address` (wiring)                                                                 |
+| `UserRegistry`                        | `Address` (wiring — arbitrator verification)                                       |
+| `Arbitrator`                          | `Address` (configured platform arbitrator)                                         |
+| `EvidenceCounter`                     | `u32`                                                                              |
+| `Dispute(u32)`                        | `DisputeRecord` — initiator, parties, arbitrator, reason, state, split, timestamps |
+| `Evidence(u32)`                       | `EvidenceRecord`                                                                   |
+
+**`user_registry`**
+
+| Key          | Value                                          |
+| ------------ | ---------------------------------------------- |
+| `Admin`      | `Address`                                      |
+| `User(Addr)` | `UserRecord` — role, reputation, registered_at |
 
 No contract re-stores what another already holds: escrow stores parties because
 it must transfer to them in the next phase; the agreement record remains the
@@ -265,7 +292,7 @@ and future indexers:
 `AgreementCreated · TenantJoined · DepositLocked · MoveOutRequested ·
 EvidenceSubmitted · InspectionApproved · DeductionProposed ·
 SettlementAccepted · DisputeOpened · DisputeResolved · DepositReleased ·
-AgreementClosed`
+AgreementClosed · UserRegistered · ReputationUpdated · ArbitratorAssigned`
 
 Every event publishes a single symbol topic (the event name) with a typed data
 tuple, e.g. `(Symbol::new(&env, "DepositLocked"),) → (agreement_id, amount)`.
@@ -293,6 +320,7 @@ compares it against the addresses registered at `initialize`.
 | `lock_for_dispute` | dispute → escrow           | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute.                                                                                          |
 | `get_deposit`      | dispute → escrow           | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state.                                        |
 | `settle_dispute`   | dispute → escrow           | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
+| `get_user`         | dispute → user_registry    | `set_arbitrator` verifies the proposed address is registered with the `Arbitrator` role before assignment, so a random wallet cannot act as arbitrator.                                          |
 
 Every call changes real state in the callee — there is no decoration.
 
@@ -320,8 +348,9 @@ fail the comparison.
 `DepositAlreadyLocked`, `DepositAlreadyReleased`, `InvalidDeduction`,
 `DisputeAlreadyOpen`, `DisputeNotFound`, `NotParty`,
 `SettlementAlreadyExecuted`, `EvidenceNotFound`, `DepositNotFound`,
-`NotInitialized`. Normal validation failures return these errors — no random
-panic strings.
+`NotInitialized`, `UserNotFound`, `UserAlreadyRegistered`,
+`NotAnArbitrator`. Normal validation failures return these errors — no
+random panic strings.
 
 ---
 
@@ -330,8 +359,9 @@ panic strings.
 - **Unit tests per contract** — in-crate `#[cfg(test)]` modules using
   `Env::default()`, `mock_all_auths()` and `Address::generate`.
 - **Cross-contract tests register the real callee crates** (`env.register`) so
-  every `EscrowClient` / `DisputeClient` call executes against real state:
-  `dispute` registers `escrow`; `rental_agreement` registers both.
+  every `EscrowClient` / `DisputeClient` / `UserRegistryClient` call executes
+  against real state: `dispute` registers `escrow` + `user_registry`;
+  `rental_agreement` registers both plus `user_registry`.
 - Covered behaviors: agreement creation, tenant joining (invited-only), deposit
   locking, unauthorized withdrawal fails, move-out request, evidence
   submission, full refund, partial deduction, dispute flow (including the
@@ -368,7 +398,7 @@ build).
 
 ```
 apps/       web (Next.js), api (Fastify)
-contracts/  Soroban Cargo workspace: common, rental_agreement, escrow, dispute
+contracts/  Soroban Cargo workspace: common, rental_agreement, escrow, dispute, user_registry
 packages/   types, shared, blockchain (TS)
 scripts/    deployment, seed
 tests/      integration + fixtures

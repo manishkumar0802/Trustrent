@@ -10,7 +10,25 @@
  * INSPECTION_PENDING → APPROVED / DISPUTED → SETTLEMENT → CLOSED
  */
 
-export type Role = "landlord" | "tenant";
+export type Role = "landlord" | "tenant" | "arbitrator";
+
+/* ------------------------------------------------------------------ */
+/* User registry                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Mirror of `tr_common::UserRole` (contracts/common/src/lib.rs). */
+export const USER_ROLES = ["LANDLORD", "TENANT", "ARBITRATOR"] as const;
+
+export type UserRole = (typeof USER_ROLES)[number];
+
+/** Mirror of `tr_common::UserRecord` (contracts/user_registry). */
+export interface UserRecord {
+  address: string;
+  role: UserRole;
+  /** Admin-managed reputation score (0..=100). */
+  reputation: number;
+  registeredAt: string; // ISO 8601
+}
 
 /* ------------------------------------------------------------------ */
 /* Agreement lifecycle                                                 */
@@ -135,6 +153,8 @@ export interface DisputeRecord {
   id: string;
   agreementId: string;
   initiator: Role;
+  /** Arbitrator assigned to this dispute (mirrors the on-chain record). */
+  arbitrator?: string;
   reason: string;
   state: DisputeState;
   proposedDeduction?: MoneyAmount;
@@ -163,6 +183,9 @@ export const CONTRACT_EVENT_NAMES = [
   "DisputeResolved",
   "DepositReleased",
   "AgreementClosed",
+  "UserRegistered",
+  "ReputationUpdated",
+  "ArbitratorAssigned",
 ] as const;
 
 export type ContractEventName = (typeof CONTRACT_EVENT_NAMES)[number];

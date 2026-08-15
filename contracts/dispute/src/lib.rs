@@ -18,8 +18,9 @@ use soroban_sdk::{
 
 use tr_common::escrow_api::EscrowClient;
 use tr_common::events;
+use tr_common::registry_api::UserRegistryClient;
 use tr_common::{
-    DisputeRecord, DisputeState, Error, EvidenceRecord, EvidenceType, TryClientResult,
+    DisputeRecord, DisputeState, Error, EvidenceRecord, EvidenceType, TryClientResult, UserRole,
 };
 
 #[contracttype]
@@ -28,6 +29,8 @@ pub enum DataKey {
     Admin,
     AgreementContract,
     EscrowContract,
+    UserRegistry,
+    Arbitrator,
     EvidenceCounter,
     Dispute(u32),
     Evidence(u32),
@@ -40,12 +43,14 @@ pub struct DisputeContract;
 #[contractimpl]
 impl DisputeContract {
     /// One-time setup: `agreement_contract` is the only contract allowed to
-    /// open disputes; `escrow_contract` is where the deposit lives.
+    /// open disputes; `escrow_contract` is where the deposit lives;
+    /// `user_registry` is where arbitrator identities are verified.
     pub fn initialize(
         env: Env,
         admin: Address,
         agreement_contract: Address,
         escrow_contract: Address,
+        user_registry: Address,
     ) {
         admin.require_auth();
         if env.storage().persistent().has(&DataKey::Admin) {
@@ -58,6 +63,39 @@ impl DisputeContract {
         env.storage()
             .persistent()
             .set(&DataKey::EscrowContract, &escrow_contract);
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserRegistry, &user_registry);
+    }
+
+    /// Assign the platform arbitrator (admin-only). The address must be
+    /// registered in the user registry with the `Arbitrator` role — verified
+    /// by a Dispute → UserRegistry read — so a random wallet cannot pose as
+    /// the arbitrator. Emits `ArbitratorAssigned`.
+    pub fn set_arbitrator(env: Env, admin: Address, arbitrator: Address) -> Result<(), Error> {
+        admin.require_auth();
+        require_caller(&env, &DataKey::Admin, &admin)?;
+
+        let registry: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::UserRegistry)
+            .ok_or(Error::NotInitialized)?;
+        let user = UserRegistryClient::new(&env, &registry)
+            .try_get_user(&arbitrator)
+            .into_result()?;
+        if user.role != UserRole::Arbitrator {
+            return Err(Error::NotAnArbitrator);
+        }
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::Arbitrator, &arbitrator);
+        env.events().publish(
+            (Symbol::new(&env, events::ARBITRATOR_ASSIGNED),),
+            (arbitrator,),
+        );
+        Ok(())
     }
 
     /// Open a dispute. Only the registered agreement contract may call this
@@ -89,11 +127,14 @@ impl DisputeContract {
             return Err(Error::DisputeAlreadyOpen);
         }
 
+        let arbitrator: Option<Address> = env.storage().persistent().get(&DataKey::Arbitrator);
+
         let record = DisputeRecord {
             agreement_id,
             landlord,
             tenant,
             initiator,
+            arbitrator,
             reason,
             state: DisputeState::Opened,
             to_tenant: 0,
@@ -181,17 +222,26 @@ impl DisputeContract {
         Ok(evidence_id)
     }
 
-    /// Landlord proposes a resolution split (Opened → UnderReview).
+    /// Propose a resolution split (Opened → UnderReview when the landlord
+    /// proposes, Opened → Accepted when the assigned arbitrator proposes).
+    ///
+    /// An arbitrator's proposal is **binding**: it skips the tenant
+    /// acceptance step, so an accepted arbitrator decision flows straight to
+    /// `resolve_dispute`. The arbitrator must be the one assigned to this
+    /// dispute (which itself was verified against the user registry at
+    /// `set_arbitrator`).
     pub fn propose_resolution(
         env: Env,
         agreement_id: u32,
-        landlord: Address,
+        proposer: Address,
         to_tenant: i128,
         to_landlord: i128,
     ) -> Result<(), Error> {
-        landlord.require_auth();
+        proposer.require_auth();
         let mut record = load(&env, agreement_id)?;
-        if record.landlord != landlord {
+        let is_landlord = record.landlord == proposer;
+        let is_assigned_arbitrator = record.arbitrator.as_ref() == Some(&proposer);
+        if !is_landlord && !is_assigned_arbitrator {
             return Err(Error::Unauthorized);
         }
         if record.state != DisputeState::Opened {
@@ -223,7 +273,11 @@ impl DisputeContract {
 
         record.to_tenant = to_tenant;
         record.to_landlord = to_landlord;
-        record.state = DisputeState::UnderReview;
+        record.state = if is_assigned_arbitrator {
+            DisputeState::Accepted
+        } else {
+            DisputeState::UnderReview
+        };
         env.storage()
             .persistent()
             .set(&DataKey::Dispute(agreement_id), &record);
@@ -264,7 +318,8 @@ impl DisputeContract {
     pub fn resolve_dispute(env: Env, agreement_id: u32, caller: Address) -> Result<(), Error> {
         caller.require_auth();
         let mut record = load(&env, agreement_id)?;
-        if caller != record.landlord && caller != record.tenant {
+        let is_arbitrator = record.arbitrator.as_ref() == Some(&caller);
+        if caller != record.landlord && caller != record.tenant && !is_arbitrator {
             return Err(Error::NotParty);
         }
         if record.state != DisputeState::Accepted {
@@ -331,28 +386,33 @@ mod test {
 
     use escrow::EscrowContract;
     use tr_common::escrow_api::EscrowClient;
-    use tr_common::DepositStatus;
+    use tr_common::registry_api::UserRegistryClient;
+    use tr_common::{DepositStatus, UserRole};
+    use user_registry::UserRegistryContract;
 
     const DEPOSIT: i128 = 30_000_000_000;
 
-    /// Registers the real escrow contract alongside the dispute contract so
-    /// the Dispute → Escrow cross-contract calls execute against real state.
-    fn setup() -> (Env, Address, Address, Address) {
+    /// Registers the real escrow + user_registry contracts alongside the
+    /// dispute contract so cross-contract calls execute against real state.
+    /// Returns (env, dispute_id, agreement, escrow_id, registry_id, admin).
+    fn setup() -> (Env, Address, Address, Address, Address, Address) {
         let env = Env::default();
         env.mock_all_auths();
 
         let escrow_id = env.register(EscrowContract, ());
         let dispute_id = env.register(DisputeContract, ());
+        let registry_id = env.register(UserRegistryContract, ());
 
         let admin = Address::generate(&env);
         let agreement = Address::generate(&env);
 
         EscrowClient::new(&env, &escrow_id).initialize(&admin, &agreement, &dispute_id);
+        UserRegistryClient::new(&env, &registry_id).initialize(&admin);
 
         let client = DisputeContractClient::new(&env, &dispute_id);
-        client.initialize(&admin, &agreement, &escrow_id);
+        client.initialize(&admin, &agreement, &escrow_id, &registry_id);
 
-        (env, dispute_id, agreement, escrow_id)
+        (env, dispute_id, agreement, escrow_id, registry_id, admin)
     }
 
     fn open_helper(
@@ -374,9 +434,42 @@ mod test {
         );
     }
 
+    /// Lock a deposit via the (simulated) agreement contract and open a
+    /// dispute for it.
+    fn lock_and_open(
+        env: &Env,
+        client: &DisputeContractClient<'_>,
+        agreement: &Address,
+        escrow_id: &Address,
+        landlord: &Address,
+        tenant: &Address,
+    ) {
+        EscrowClient::new(env, escrow_id)
+            .lock_deposit(&1u32, tenant, landlord, &DEPOSIT, agreement);
+        open_helper(env, client, agreement, 1, tenant, landlord, tenant);
+    }
+
+    /// Register a user in the registry as an Arbitrator, then set them as the
+    /// dispute contract's arbitrator. Returns the arbitrator address.
+    fn assign_arbitrator(
+        env: &Env,
+        client: &DisputeContractClient<'_>,
+        registry_id: &Address,
+        admin: &Address,
+    ) -> Address {
+        let arbitrator = Address::generate(env);
+        UserRegistryClient::new(env, registry_id).register_user(
+            admin,
+            &arbitrator,
+            &UserRole::Arbitrator,
+        );
+        client.set_arbitrator(admin, &arbitrator);
+        arbitrator
+    }
+
     #[test]
     fn opening_freezes_the_deposit() {
-        let (env, dispute_id, agreement, escrow_id) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -392,6 +485,7 @@ mod test {
         assert_eq!(dispute.initiator, tenant);
         assert_eq!(dispute.landlord, landlord);
         assert_eq!(dispute.tenant, tenant);
+        assert_eq!(dispute.arbitrator, None);
 
         // The deposit is frozen in escrow.
         let deposit = EscrowClient::new(&env, &escrow_id).get_deposit(&1u32);
@@ -401,7 +495,7 @@ mod test {
 
     #[test]
     fn full_dispute_flow_settles_escrow() {
-        let (env, dispute_id, agreement, escrow_id) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -439,8 +533,127 @@ mod test {
     }
 
     #[test]
+    fn arbitrator_assignment_verified_against_registry() {
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
+
+        // A non-arbitrator (unregistered wallet) cannot be assigned.
+        let stranger = Address::generate(&env);
+        assert_eq!(
+            client
+                .try_set_arbitrator(&admin, &stranger)
+                .unwrap_err()
+                .unwrap(),
+            Error::UserNotFound
+        );
+
+        // A user registered with a different role cannot be assigned.
+        let tenant = Address::generate(&env);
+        UserRegistryClient::new(&env, &registry_id).register_user(
+            &admin,
+            &tenant,
+            &UserRole::Tenant,
+        );
+        assert_eq!(
+            client
+                .try_set_arbitrator(&admin, &tenant)
+                .unwrap_err()
+                .unwrap(),
+            Error::NotAnArbitrator
+        );
+
+        // A non-admin cannot assign an arbitrator.
+        let arbitrator = Address::generate(&env);
+        UserRegistryClient::new(&env, &registry_id).register_user(
+            &admin,
+            &arbitrator,
+            &UserRole::Arbitrator,
+        );
+        assert_eq!(
+            client
+                .try_set_arbitrator(&stranger, &arbitrator)
+                .unwrap_err()
+                .unwrap(),
+            Error::Unauthorized
+        );
+
+        // A registered Arbitrator can be assigned.
+        client.set_arbitrator(&admin, &arbitrator);
+        let _ = (agreement, escrow_id);
+    }
+
+    #[test]
+    fn arbitrator_decision_is_binding() {
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
+        let landlord = Address::generate(&env);
+        let tenant = Address::generate(&env);
+
+        let arbitrator = assign_arbitrator(&env, &client, &registry_id, &admin);
+        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+
+        // The assigned arbitrator is recorded on the dispute.
+        assert_eq!(
+            client.get_dispute(&1u32).arbitrator,
+            Some(arbitrator.clone())
+        );
+
+        // Arbitrator's proposal is binding: Opened → Accepted directly,
+        // skipping tenant acceptance.
+        client.propose_resolution(&1u32, &arbitrator, &20_000_000_000i128, &10_000_000_000i128);
+        assert_eq!(client.get_dispute(&1u32).state, DisputeState::Accepted);
+
+        // The arbitrator (or either party) can execute the accepted split.
+        client.resolve_dispute(&1u32, &arbitrator);
+        assert_eq!(client.get_dispute(&1u32).state, DisputeState::Resolved);
+
+        let deposit = EscrowClient::new(&env, &escrow_id).get_deposit(&1u32);
+        assert_eq!(deposit.released, DEPOSIT);
+        assert_eq!(deposit.status, DepositStatus::Released);
+    }
+
+    #[test]
+    fn unassigned_wallets_cannot_act_as_arbitrator() {
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
+        let landlord = Address::generate(&env);
+        let tenant = Address::generate(&env);
+
+        let arbitrator = assign_arbitrator(&env, &client, &registry_id, &admin);
+        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+
+        // A registered Arbitrator who is NOT assigned to this dispute cannot
+        // propose — only the assigned arbitrator is authorized.
+        let other_arbitrator = Address::generate(&env);
+        UserRegistryClient::new(&env, &registry_id).register_user(
+            &admin,
+            &other_arbitrator,
+            &UserRole::Arbitrator,
+        );
+        assert_eq!(
+            client
+                .try_propose_resolution(
+                    &1u32,
+                    &other_arbitrator,
+                    &20_000_000_000i128,
+                    &10_000_000_000i128
+                )
+                .unwrap_err()
+                .unwrap(),
+            Error::Unauthorized
+        );
+
+        // The assigned arbitrator is authorized.
+        client.propose_resolution(&1u32, &arbitrator, &20_000_000_000i128, &10_000_000_000i128);
+
+        // And the assigned arbitrator can execute the resolution.
+        client.resolve_dispute(&1u32, &arbitrator);
+        assert_eq!(client.get_dispute(&1u32).state, DisputeState::Resolved);
+    }
+
+    #[test]
     fn unauthorized_calls_are_rejected() {
-        let (env, dispute_id, agreement, escrow_id) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -509,7 +722,7 @@ mod test {
 
     #[test]
     fn guards_on_state_and_amounts() {
-        let (env, dispute_id, agreement, escrow_id) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);

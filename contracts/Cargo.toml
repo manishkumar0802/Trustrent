@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["common", "rental_agreement", "escrow", "dispute"]
+members = ["common", "rental_agreement", "escrow", "dispute", "user_registry"]
 
 [workspace.package]
 version = "0.1.0"

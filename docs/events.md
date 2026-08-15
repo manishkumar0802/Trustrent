@@ -18,6 +18,9 @@ exact catalog (`CONTRACT_EVENT_NAMES` in `@trustrent/types`).
 | `DisputeResolved`    | dispute                   | `agreement_id, to_tenant, to_landlord`         | Dispute resolved with release amounts |
 | `DepositReleased`    | escrow                    | `agreement_id, amount`                         | Funds released from the lock          |
 | `AgreementClosed`    | rental_agreement          | `agreement_id`                                 | Lifecycle complete                    |
+| `UserRegistered`     | user_registry             | `user, role`                                   | A wallet was registered with a role   |
+| `ReputationUpdated`  | user_registry             | `user, reputation`                             | Reputation score changed              |
+| `ArbitratorAssigned` | dispute                   | `arbitrator`                                   | Platform arbitrator assigned          |
 
 Topic/data payloads are phase-1 placeholders; they will be enriched (Address
 actors, amounts in stroops) as contracts mature — keep the _names_ stable so
