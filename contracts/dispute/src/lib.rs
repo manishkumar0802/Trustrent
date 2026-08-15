@@ -341,6 +341,11 @@ impl DisputeContract {
             )
             .into_result()?;
 
+        // Record the outcome in the user registry (best-effort, after the
+        // escrow settlement): the party receiving the larger share gains
+        // reputation, the other loses some.
+        apply_outcome_reputation(&env, &record);
+
         record.state = DisputeState::Resolved;
         record.resolved_at = Some(env.ledger().timestamp());
         env.storage()
@@ -357,6 +362,63 @@ impl DisputeContract {
     pub fn get_dispute(env: Env, agreement_id: u32) -> Result<DisputeRecord, Error> {
         load(&env, agreement_id)
     }
+}
+
+/// How many reputation points the winning / losing party of a resolved
+/// dispute gains / loses.
+const REPUTATION_WIN_DELTA: i32 = 10;
+const REPUTATION_LOSS_DELTA: i32 = -10;
+
+/// Best-effort reputation update after a settlement (Dispute → UserRegistry).
+/// The party receiving the larger share wins; an equal split changes nothing.
+///
+/// Failures are deliberately non-fatal: settlement is the critical path and
+/// must not depend on reputation bookkeeping. A party that is not registered
+/// (`UserNotFound`), a registry that has no reputation source configured
+/// (`NotInitialized`), or a caller mismatch (`Unauthorized`) are all skipped;
+/// any other error is treated as a hard failure of the resolution.
+fn apply_outcome_reputation(env: &Env, record: &DisputeRecord) {
+    let registry: Address = match env.storage().persistent().get(&DataKey::UserRegistry) {
+        Some(registry) => registry,
+        None => return,
+    };
+    let caller = env.current_contract_address();
+    let client = UserRegistryClient::new(env, &registry);
+
+    let (winner, loser) = match record.to_tenant.cmp(&record.to_landlord) {
+        core::cmp::Ordering::Greater => (Some(&record.tenant), Some(&record.landlord)),
+        core::cmp::Ordering::Less => (Some(&record.landlord), Some(&record.tenant)),
+        core::cmp::Ordering::Equal => (None, None),
+    };
+
+    for (user, delta) in [
+        (winner, REPUTATION_WIN_DELTA),
+        (loser, REPUTATION_LOSS_DELTA),
+    ] {
+        let Some(user) = user else {
+            continue;
+        };
+        match adjust_outcome(&client, &caller, user, delta) {
+            Ok(()) => {}
+            // Not applicable — skip quietly; settlement already happened.
+            Err(Error::UserNotFound | Error::NotInitialized | Error::Unauthorized) => {}
+            // Any other error is a genuine failure — surface it.
+            Err(e) => panic_with_error!(env, e),
+        }
+    }
+}
+
+/// One reputation adjustment against the registry, returning the registry's
+/// error (which the caller decides how to treat).
+fn adjust_outcome(
+    client: &UserRegistryClient<'_>,
+    caller: &Address,
+    user: &Address,
+    delta: i32,
+) -> Result<(), Error> {
+    client
+        .try_adjust_reputation(caller, user, &delta)
+        .into_result()
 }
 
 fn require_caller(env: &Env, key: &DataKey, caller: &Address) -> Result<(), Error> {
@@ -610,6 +672,58 @@ mod test {
         let deposit = EscrowClient::new(&env, &escrow_id).get_deposit(&1u32);
         assert_eq!(deposit.released, DEPOSIT);
         assert_eq!(deposit.status, DepositStatus::Released);
+    }
+
+    #[test]
+    fn resolution_updates_reputation_in_registry() {
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
+        let landlord = Address::generate(&env);
+        let tenant = Address::generate(&env);
+
+        // Register both parties and wire the dispute contract as the
+        // reputation source so outcomes flow into the registry.
+        let registry = UserRegistryClient::new(&env, &registry_id);
+        registry.register_user(&admin, &landlord, &UserRole::Landlord);
+        registry.register_user(&admin, &tenant, &UserRole::Tenant);
+        registry.set_reputation_source(&admin, &dispute_id);
+
+        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+
+        // Tenant wins the split (25k to tenant, 5k to landlord).
+        client.propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
+        client.accept_resolution(&1u32, &tenant);
+        client.resolve_dispute(&1u32, &tenant);
+
+        assert_eq!(client.get_dispute(&1u32).state, DisputeState::Resolved);
+
+        // Winner gains, loser loses (starting at the neutral baseline of 50).
+        assert_eq!(registry.get_user(&tenant).reputation, 60);
+        assert_eq!(registry.get_user(&landlord).reputation, 40);
+    }
+
+    #[test]
+    fn equal_split_does_not_change_reputation() {
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let client = DisputeContractClient::new(&env, &dispute_id);
+        let landlord = Address::generate(&env);
+        let tenant = Address::generate(&env);
+
+        let registry = UserRegistryClient::new(&env, &registry_id);
+        registry.register_user(&admin, &landlord, &UserRole::Landlord);
+        registry.register_user(&admin, &tenant, &UserRole::Tenant);
+        registry.set_reputation_source(&admin, &dispute_id);
+
+        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+
+        // An even split has no winner — reputation is untouched.
+        let half = DEPOSIT / 2;
+        client.propose_resolution(&1u32, &landlord, &half, &half);
+        client.accept_resolution(&1u32, &tenant);
+        client.resolve_dispute(&1u32, &tenant);
+
+        assert_eq!(registry.get_user(&tenant).reputation, 50);
+        assert_eq!(registry.get_user(&landlord).reputation, 50);
     }
 
     #[test]

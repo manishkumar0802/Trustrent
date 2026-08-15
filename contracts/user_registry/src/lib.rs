@@ -3,14 +3,18 @@
 //! User registry contract — the identity and role directory for the platform.
 //!
 //! Stores a wallet address → role mapping (Landlord / Tenant / Arbitrator)
-//! plus an admin-managed reputation score. This is the contract the dispute
-//! contract consults to verify that an address really is a registered
-//! Arbitrator before a binding resolution is accepted (see the dispute
-//! contract). The registry never moves funds and holds no deposit state — it
-//! is a pure directory, which keeps it cheap and audit-friendly.
+//! plus a reputation score. The dispute contract consults this registry to
+//! verify an address really is a registered Arbitrator before a binding
+//! resolution is accepted, and — after a dispute settles — the dispute
+//! contract adjusts the winner's/loser's reputation through
+//! `adjust_reputation`, which only the registered reputation source may
+//! call. The registry never moves funds and holds no deposit state — it is
+//! a pure directory, which keeps it cheap and audit-friendly.
 //!
-//! Registration and reputation changes are admin-only (`require_admin`).
-//! Reads (`get_user`) are public so any contract or wallet can look a
+//! Registration and absolute reputation changes are admin-only
+//! (`require_admin`). Delta adjustments (`adjust_reputation`) are restricted
+//! to a single source contract (the dispute contract) configured by the
+//! admin. Reads (`get_user`) are public so any contract or wallet can look a
 //! counterparty up.
 
 use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, Symbol};
@@ -22,11 +26,16 @@ use tr_common::{Error, UserRecord, UserRole};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DataKey {
     Admin,
+    /// The contract allowed to call `adjust_reputation` (the dispute
+    /// contract). Unset until the admin configures it.
+    ReputationSource,
     User(Address),
 }
 
-/// Neutral starting reputation for a newly registered user.
-const INITIAL_REPUTATION: u32 = 100;
+/// Neutral starting reputation for a newly registered user. Mid-band (50 of
+/// 0..=100) so dispute outcomes have symmetric headroom in both directions —
+/// a baseline of 100 would make wins impossible.
+const INITIAL_REPUTATION: u32 = 50;
 
 #[contract]
 pub struct UserRegistryContract;
@@ -90,6 +99,58 @@ impl UserRegistryContract {
             .get(&DataKey::User(user.clone()))
             .ok_or(Error::UserNotFound)?;
         record.reputation = reputation.min(100);
+        env.storage()
+            .persistent()
+            .set(&DataKey::User(user), &record);
+
+        env.events().publish(
+            (Symbol::new(&env, events::REPUTATION_UPDATED),),
+            (record.address.clone(), record.reputation),
+        );
+        Ok(())
+    }
+
+    /// Configure the contract allowed to call `adjust_reputation` (the
+    /// dispute contract). Admin-only. Without this, dispute outcomes cannot
+    /// touch reputation.
+    pub fn set_reputation_source(env: Env, admin: Address, source: Address) -> Result<(), Error> {
+        admin.require_auth();
+        require_admin(&env, &admin)?;
+        env.storage()
+            .persistent()
+            .set(&DataKey::ReputationSource, &source);
+        Ok(())
+    }
+
+    /// Delta-based reputation change, restricted to the configured reputation
+    /// source (the dispute contract after a settlement). `delta` may be
+    /// positive or negative; the result is clamped to 0..=100. Emits
+    /// `ReputationUpdated`. Returns `Error::Unauthorized` if the caller is
+    /// not the configured source, `Error::NotInitialized` if no source has
+    /// been configured yet.
+    pub fn adjust_reputation(
+        env: Env,
+        caller: Address,
+        user: Address,
+        delta: i32,
+    ) -> Result<(), Error> {
+        caller.require_auth();
+        let source: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::ReputationSource)
+            .ok_or(Error::NotInitialized)?;
+        if caller != source {
+            return Err(Error::Unauthorized);
+        }
+
+        let mut record: UserRecord = env
+            .storage()
+            .persistent()
+            .get(&DataKey::User(user.clone()))
+            .ok_or(Error::UserNotFound)?;
+        let next = (record.reputation as i32 + delta).clamp(0, 100) as u32;
+        record.reputation = next;
         env.storage()
             .persistent()
             .set(&DataKey::User(user), &record);
@@ -217,6 +278,81 @@ mod test {
         let stranger = Address::generate(&env);
         assert_eq!(
             client.try_get_user(&stranger).unwrap_err().unwrap(),
+            Error::UserNotFound
+        );
+    }
+
+    #[test]
+    fn adjust_reputation_requires_configured_source() {
+        let (env, admin, client) = setup();
+        let user = Address::generate(&env);
+        client.register_user(&admin, &user, &UserRole::Tenant);
+
+        // No reputation source configured yet.
+        let source = Address::generate(&env);
+        assert_eq!(
+            client
+                .try_adjust_reputation(&source, &user, &10)
+                .unwrap_err()
+                .unwrap(),
+            Error::NotInitialized
+        );
+
+        // Admin configures the source.
+        client.set_reputation_source(&admin, &source);
+
+        // A non-source caller is rejected.
+        let stranger = Address::generate(&env);
+        assert_eq!(
+            client
+                .try_adjust_reputation(&stranger, &user, &10)
+                .unwrap_err()
+                .unwrap(),
+            Error::Unauthorized
+        );
+
+        // Only the admin can change the source.
+        assert_eq!(
+            client
+                .try_set_reputation_source(&stranger, &source)
+                .unwrap_err()
+                .unwrap(),
+            Error::Unauthorized
+        );
+    }
+
+    #[test]
+    fn adjust_reputation_applies_delta_and_clamps() {
+        let (env, admin, client) = setup();
+        let source = Address::generate(&env);
+        client.set_reputation_source(&admin, &source);
+
+        let user = Address::generate(&env);
+        client.register_user(&admin, &user, &UserRole::Tenant);
+
+        // Starts at the neutral baseline.
+        assert_eq!(client.get_user(&user).reputation, INITIAL_REPUTATION);
+
+        // Source adds and subtracts deltas.
+        client.adjust_reputation(&source, &user, &10);
+        assert_eq!(client.get_user(&user).reputation, 60);
+        client.adjust_reputation(&source, &user, &-30);
+        assert_eq!(client.get_user(&user).reputation, 30);
+
+        // Clamped at both ends (use large-but-valid deltas — i32::MAX is a
+        // reserved sentinel in the Soroban host).
+        client.adjust_reputation(&source, &user, &1_000_000);
+        assert_eq!(client.get_user(&user).reputation, 100);
+        client.adjust_reputation(&source, &user, &-1_000_000);
+        assert_eq!(client.get_user(&user).reputation, 0);
+
+        // Unknown user cannot be adjusted.
+        let stranger = Address::generate(&env);
+        assert_eq!(
+            client
+                .try_adjust_reputation(&source, &stranger, &10)
+                .unwrap_err()
+                .unwrap(),
             Error::UserNotFound
         );
     }

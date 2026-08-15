@@ -45,7 +45,7 @@ Dispute records, deductions and resolutions.
 | `set_arbitrator(admin, arbitrator)`                                  | Assigns the platform arbitrator (verified against the user registry). Emits `ArbitratorAssigned`.                                             |
 | `propose_resolution(agreement_id, proposer, to_tenant, to_landlord)` | Landlord proposal: `Opened → UnderReview`; assigned arbitrator's proposal is binding: `Opened → Accepted`. Emits `DisputeResolutionProposed`. |
 | `accept_resolution(agreement_id, tenant)`                            | `UnderReview → Accepted`. Emits `SettlementAccepted`.                                                                                         |
-| `resolve(agreement_id, caller)`                                      | `→ Resolved`; executes the split in escrow. Emits `DisputeResolved`.                                                                          |
+| `resolve(agreement_id, caller)`                                      | `→ Resolved`; executes the split in escrow, then updates winner/loser reputation in the registry (best-effort). Emits `DisputeResolved`.      |
 | `get(agreement_id)`                                                  | Read helper.                                                                                                                                  |
 
 Storage keys: `Dispute(u32)`.
@@ -53,18 +53,22 @@ Storage keys: `Dispute(u32)`.
 ## user_registry (`contracts/user_registry`)
 
 The platform identity directory: wallet address → role (Landlord / Tenant /
-Arbitrator) plus an admin-managed reputation score (0..=100). The dispute
-contract reads it to verify an arbitrator before assignment, so a random
-wallet cannot pose as one. The registry never moves funds.
+Arbitrator) plus a reputation score (0..=100, neutral baseline 50). The
+dispute contract reads it to verify an arbitrator before assignment, so a
+random wallet cannot pose as one, and writes settlement outcomes back: the
+larger-share party gains reputation, the other loses some. The registry
+never moves funds.
 
-| Function                             | Effect                                                                           |
-| ------------------------------------ | -------------------------------------------------------------------------------- |
-| `initialize(admin)`                  | One-time setup.                                                                  |
-| `register_user(admin, user, role)`   | Registers a user with a role (starts at reputation 100). Emits `UserRegistered`. |
-| `set_reputation(admin, user, score)` | Updates the reputation score (clamped 0..=100). Emits `ReputationUpdated`.       |
-| `get_user(user)`                     | Public read helper.                                                              |
+| Function                                 | Effect                                                                                  |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| `initialize(admin)`                      | One-time setup.                                                                         |
+| `register_user(admin, user, role)`       | Registers a user with a role (starts at neutral reputation 50). Emits `UserRegistered`. |
+| `set_reputation(admin, user, score)`     | Absolute reputation update (clamped 0..=100). Emits `ReputationUpdated`.                |
+| `set_reputation_source(admin, source)`   | Authorizes a contract (the dispute contract) to call `adjust_reputation`.               |
+| `adjust_reputation(caller, user, delta)` | Delta reputation change, source-gated; clamped 0..=100. Emits `ReputationUpdated`.      |
+| `get_user(user)`                         | Public read helper.                                                                     |
 
-Storage keys: `Admin`, `User(Address)`.
+Storage keys: `Admin`, `ReputationSource`, `User(Address)`.
 
 ## Cross-contract plan (phase 2)
 
