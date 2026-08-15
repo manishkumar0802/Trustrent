@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { formatINR } from "@trustrent/shared";
-import { MOCK_AGREEMENTS, MOCK_EVENTS } from "@/data/mock-data";
+import { MOCK_AGREEMENTS, MOCK_EVENTS, getMockReputation } from "@/data/mock-data";
 import { StatusCards } from "@/components/deposit/status-cards";
 import { ActivityFeed } from "@/components/deposit/activity-feed";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { ReputationBadge } from "@/components/ui/reputation-badge";
 import { IconChevronRight, IconLock } from "@/components/icons";
 import { AgreementStatusBadge } from "@/components/ui/status-badge";
 
@@ -17,9 +18,12 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <header>
         <p className="text-sm text-ink-400">Welcome back</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900">
-          {primary.tenant.name} · {primary.property.locality}
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+            {primary.tenant.name} · {primary.property.locality}
+          </h1>
+          <ReputationBadge score={getMockReputation(primary.tenant.address)} />
+        </div>
         <p className="mt-1 text-sm text-ink-400">
           Your security deposit is safe, visible and contract-controlled.
         </p>
