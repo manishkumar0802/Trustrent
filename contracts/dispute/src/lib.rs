@@ -447,6 +447,7 @@ mod test {
     use soroban_sdk::{Env, String as SorobanString};
 
     use escrow::EscrowContract;
+    use soroban_sdk::token::{StellarAssetClient, TokenClient};
     use tr_common::escrow_api::EscrowClient;
     use tr_common::registry_api::UserRegistryClient;
     use tr_common::{DepositStatus, UserRole};
@@ -456,8 +457,8 @@ mod test {
 
     /// Registers the real escrow + user_registry contracts alongside the
     /// dispute contract so cross-contract calls execute against real state.
-    /// Returns (env, dispute_id, agreement, escrow_id, registry_id, admin).
-    fn setup() -> (Env, Address, Address, Address, Address, Address) {
+    /// Returns (env, dispute_id, agreement, escrow_id, registry_id, admin, token).
+    fn setup() -> (Env, Address, Address, Address, Address, Address, Address) {
         let env = Env::default();
         env.mock_all_auths();
 
@@ -467,14 +468,33 @@ mod test {
 
         let admin = Address::generate(&env);
         let agreement = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(admin.clone())
+            .address();
 
-        EscrowClient::new(&env, &escrow_id).initialize(&admin, &agreement, &dispute_id);
+        EscrowClient::new(&env, &escrow_id).initialize(&admin, &agreement, &dispute_id, &token);
         UserRegistryClient::new(&env, &registry_id).initialize(&admin);
 
         let client = DisputeContractClient::new(&env, &dispute_id);
         client.initialize(&admin, &agreement, &escrow_id, &registry_id);
 
-        (env, dispute_id, agreement, escrow_id, registry_id, admin)
+        (
+            env,
+            dispute_id,
+            agreement,
+            escrow_id,
+            registry_id,
+            admin,
+            token,
+        )
+    }
+
+    /// Mint the deposit to the tenant and approve the escrow contract to
+    /// spend it (the off-chain pre-step to locking).
+    fn fund_deposit(env: &Env, token: &Address, escrow_id: &Address, tenant: &Address) {
+        StellarAssetClient::new(env, token).mint(tenant, &DEPOSIT);
+        // Well below the host's max ledger so the allowance never expires.
+        TokenClient::new(env, token).approve(tenant, escrow_id, &DEPOSIT, &5_000_000u32);
     }
 
     fn open_helper(
@@ -503,9 +523,11 @@ mod test {
         client: &DisputeContractClient<'_>,
         agreement: &Address,
         escrow_id: &Address,
+        token: &Address,
         landlord: &Address,
         tenant: &Address,
     ) {
+        fund_deposit(env, token, escrow_id, tenant);
         EscrowClient::new(env, escrow_id)
             .lock_deposit(&1u32, tenant, landlord, &DEPOSIT, agreement);
         open_helper(env, client, agreement, 1, tenant, landlord, tenant);
@@ -531,12 +553,13 @@ mod test {
 
     #[test]
     fn opening_freezes_the_deposit() {
-        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         // Tenant locks the deposit through the (simulated) agreement contract.
+        fund_deposit(&env, &token, &escrow_id, &tenant);
         EscrowClient::new(&env, &escrow_id)
             .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
 
@@ -557,11 +580,12 @@ mod test {
 
     #[test]
     fn full_dispute_flow_settles_escrow() {
-        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
+        fund_deposit(&env, &token, &escrow_id, &tenant);
         EscrowClient::new(&env, &escrow_id)
             .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
         open_helper(&env, &client, &agreement, 1, &tenant, &landlord, &tenant);
@@ -596,7 +620,7 @@ mod test {
 
     #[test]
     fn arbitrator_assignment_verified_against_registry() {
-        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin, _token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
 
         // A non-arbitrator (unregistered wallet) cannot be assigned.
@@ -646,13 +670,15 @@ mod test {
 
     #[test]
     fn arbitrator_decision_is_binding() {
-        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         let arbitrator = assign_arbitrator(&env, &client, &registry_id, &admin);
-        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+        lock_and_open(
+            &env, &client, &agreement, &escrow_id, &token, &landlord, &tenant,
+        );
 
         // The assigned arbitrator is recorded on the dispute.
         assert_eq!(
@@ -676,7 +702,7 @@ mod test {
 
     #[test]
     fn resolution_updates_reputation_in_registry() {
-        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -688,7 +714,9 @@ mod test {
         registry.register_user(&admin, &tenant, &UserRole::Tenant);
         registry.set_reputation_source(&admin, &dispute_id);
 
-        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+        lock_and_open(
+            &env, &client, &agreement, &escrow_id, &token, &landlord, &tenant,
+        );
 
         // Tenant wins the split (25k to tenant, 5k to landlord).
         client.propose_resolution(&1u32, &landlord, &25_000_000_000i128, &5_000_000_000i128);
@@ -704,7 +732,7 @@ mod test {
 
     #[test]
     fn equal_split_does_not_change_reputation() {
-        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -714,7 +742,9 @@ mod test {
         registry.register_user(&admin, &tenant, &UserRole::Tenant);
         registry.set_reputation_source(&admin, &dispute_id);
 
-        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+        lock_and_open(
+            &env, &client, &agreement, &escrow_id, &token, &landlord, &tenant,
+        );
 
         // An even split has no winner — reputation is untouched.
         let half = DEPOSIT / 2;
@@ -728,13 +758,15 @@ mod test {
 
     #[test]
     fn unassigned_wallets_cannot_act_as_arbitrator() {
-        let (env, dispute_id, agreement, escrow_id, registry_id, admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, registry_id, admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         let arbitrator = assign_arbitrator(&env, &client, &registry_id, &admin);
-        lock_and_open(&env, &client, &agreement, &escrow_id, &landlord, &tenant);
+        lock_and_open(
+            &env, &client, &agreement, &escrow_id, &token, &landlord, &tenant,
+        );
 
         // A registered Arbitrator who is NOT assigned to this dispute cannot
         // propose — only the assigned arbitrator is authorized.
@@ -767,7 +799,7 @@ mod test {
 
     #[test]
     fn unauthorized_calls_are_rejected() {
-        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -790,6 +822,7 @@ mod test {
         );
 
         // A dispute freezes an existing deposit, so one must be locked first.
+        fund_deposit(&env, &token, &escrow_id, &tenant);
         EscrowClient::new(&env, &escrow_id)
             .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
 
@@ -836,12 +869,13 @@ mod test {
 
     #[test]
     fn guards_on_state_and_amounts() {
-        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin) = setup();
+        let (env, dispute_id, agreement, escrow_id, _registry_id, _admin, token) = setup();
         let client = DisputeContractClient::new(&env, &dispute_id);
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
 
         // A dispute freezes an existing deposit, so one must be locked first.
+        fund_deposit(&env, &token, &escrow_id, &tenant);
         EscrowClient::new(&env, &escrow_id)
             .lock_deposit(&1u32, &tenant, &landlord, &DEPOSIT, &agreement);
 
