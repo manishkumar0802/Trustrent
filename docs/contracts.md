@@ -25,17 +25,23 @@ Storage keys: `Counter`, `EvidenceCounter`, `Agreement(u32)`, `Evidence(u32)`, p
 
 ## escrow (`contracts/escrow`)
 
-Holds the deposit. No transfers happen in phase 1 (bookkeeping only).
+Holds the deposit in a **Stellar Asset Contract (SAC)** — funds actually
+move. `initialize` registers the token; `lock_deposit` pulls the deposit from
+the tenant (`transfer_from` — the tenant approves the escrow contract as
+spender off-chain), and every release/settlement transfers out of the
+escrow contract's own balance.
 
-| Function                                | Effect                                                                              |
-| --------------------------------------- | ----------------------------------------------------------------------------------- |
-| `initialize(admin)`                     | One-time setup.                                                                     |
-| `lock(agreement_id, depositor, amount)` | Creates the deposit lock (`Locked`). One lock per agreement. Emits `DepositLocked`. |
-| `release(agreement_id, amount)`         | Partial/full release bookkeeping. Emits `DepositReleased`.                          |
-| `mark_disputed(agreement_id)`           | Sets `Disputed` — funds stay locked.                                                |
-| `lock_status / locked_amount`           | Read helpers.                                                                       |
+| Function                                               | Effect                                                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `initialize(admin, agreement, dispute, token)`         | One-time setup; `token` is the SAC.                                                    |
+| `lock(agreement_id, tenant, landlord, amount)`         | Pulls `amount` into escrow (`transfer_from`), records `Locked`. Emits `DepositLocked`. |
+| `release_full(agreement_id)`                           | Transfers the full remainder to the tenant. Emits `DepositReleased`.                   |
+| `release_partial(agreement_id, to_tenant, landlord)`   | Transfers the agreed split to both parties. Emits `DepositReleased`.                   |
+| `mark_disputed(agreement_id)`                          | Freezes the deposit (`Disputed`) — funds stay in escrow.                               |
+| `settle_dispute(agreement_id, to_tenant, to_landlord)` | Dispute-only settlement; transfers the split to both parties.                          |
 
-Storage keys: `Admin`, `Lock(u32)`.
+Storage keys: `Admin`, `AgreementContract`, `DisputeContract`, `Token`,
+`Deposit(u32)`.
 
 ## dispute (`contracts/dispute`)
 

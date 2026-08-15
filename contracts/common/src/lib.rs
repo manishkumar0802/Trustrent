@@ -254,6 +254,7 @@ pub mod escrow_api {
             admin: Address,
             agreement_contract: Address,
             dispute_contract: Address,
+            token: Address,
         );
 
         fn lock_deposit(

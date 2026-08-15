@@ -14,7 +14,8 @@
   arbitrator decisions are binding and verified against the registry, and
   both settlement outcomes and clean move-outs (full refunds) adjust
   reputation ✅
-- Real token transfer in escrow (Stellar Asset Contract) on **testnet**
+- Real token transfer in escrow (Stellar Asset Contract) ✅ — contract-side
+  wiring + tests; deploy to **testnet** pending credentials
 - `@stellar/stellar-sdk`-driven `TrustRentClient`; replace mock data
 - Deploy scripts create + initialize contracts; contract IDs → env
 - Off-chain storage provider (chosen via Gravity Index)

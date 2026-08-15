@@ -115,16 +115,21 @@ close_agreement(env, agreement_id: u32, caller: Address) -> Result<(), Error>
 ### `escrow` (EscrowContract)
 
 ```rust
-initialize(env, admin: Address, agreement_contract: Address, dispute_contract: Address)
+initialize(env, admin: Address, agreement_contract: Address, dispute_contract: Address,
+           token: Address)                    // token = Stellar Asset Contract
 lock_deposit(env, agreement_id: u32, tenant: Address, landlord: Address, amount: i128,
-             caller: Address) -> Result<(), Error>            // caller == agreement_contract
+             caller: Address) -> Result<(), Error>   // caller == agreement_contract
+                                                     // → token.transfer_from (pulls deposit into escrow)
 get_deposit(env, agreement_id: u32) -> Result<DepositRecord, Error>
 release_full(env, agreement_id: u32, caller: Address) -> Result<(), Error>  // caller == agreement_contract
+                                                                           // → token.transfer (to tenant)
 release_partial(env, agreement_id: u32, to_tenant: i128, to_landlord: i128,
-                caller: Address) -> Result<(), Error>         // caller == agreement_contract
+                caller: Address) -> Result<(), Error>    // caller == agreement_contract
+                                                         // → token.transfer ×2
 lock_for_dispute(env, agreement_id: u32, caller: Address) -> Result<(), Error>  // caller == dispute_contract
 settle_dispute(env, agreement_id: u32, to_tenant: i128, to_landlord: i128,
-               caller: Address) -> Result<(), Error>          // caller == dispute_contract
+               caller: Address) -> Result<(), Error>     // caller == dispute_contract
+                                                         // → token.transfer ×2
 ```
 
 ### `dispute` (DisputeContract)
@@ -160,10 +165,12 @@ adjust_reputation(env, caller: Address, user: Address, delta: i32) -> Result<(),
 get_user(env, user: Address) -> Result<UserRecord, Error>
 ```
 
-All amounts are in the smallest token unit (stroops) and are **bookkeeping
-only** in the current phase — no token transfers happen yet. The authorization
-surface below is exactly what the real Stellar Asset Contract transfers will
-sit behind.
+All amounts are in the smallest token unit (stroops). Fund movements are
+**real**: escrow pulls the deposit from the tenant via SAC `transfer_from`
+on lock (the tenant approves the escrow contract as spender off-chain) and
+transfers out of its own balance on every release/settlement. The
+bookkeeping record is the state machine's source of truth; the SAC balances
+are the actual funds.
 
 ---
 
@@ -251,6 +258,7 @@ across contracts.
 | -------------------------------------- | --------------------------------------------------------------------------- |
 | `Admin`                                | `Address`                                                                   |
 | `AgreementContract`, `DisputeContract` | `Address` (authorized callers)                                              |
+| `Token`                                | `Address` — the Stellar Asset Contract deposits are denominated in          |
 | `Deposit(u32)`                         | `DepositRecord` — tenant, landlord, amount, `released`, status, `locked_at` |
 
 **`dispute`**
@@ -322,19 +330,20 @@ clients (`#[contractclient]` on `tr_common::escrow_api::EscrowInterface` and
 a contract address is implicitly authorized as the direct invoker — and
 compares it against the addresses registered at `initialize`.
 
-| Call                | Direction                        | Why it exists                                                                                                                                                                                    |
-| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lock_deposit`      | rental_agreement → escrow        | Tenant funding. Escrow accepts only from the registered agreement contract, so a tenant cannot lock a deposit outside the agreement state machine (e.g. after move-out).                         |
-| `release_full`      | rental_agreement → escrow        | Full refund when a clean agreement is closed. Escrow re-validates the caller and that the deposit is not already released / dispute-locked.                                                      |
-| `release_partial`   | rental_agreement → escrow        | Executes the agreed-deduction split the moment the tenant accepts it.                                                                                                                            |
-| `open_dispute`      | rental_agreement → dispute       | Delegates dispute records. The agreement contract has already verified the initiator is a party and the state is `INSPECTION_PENDING`.                                                           |
-| `get_dispute`       | rental_agreement → dispute       | `close_agreement` reads the dispute record to verify it is truly `Resolved` before allowing the agreement to close.                                                                              |
-| `lock_for_dispute`  | dispute → escrow                 | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute.                                                                                          |
-| `get_deposit`       | dispute → escrow                 | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state.                                        |
-| `settle_dispute`    | dispute → escrow                 | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
-| `get_user`          | dispute → user_registry          | `set_arbitrator` verifies the proposed address is registered with the `Arbitrator` role before assignment, so a random wallet cannot act as arbitrator.                                          |
-| `adjust_reputation` | dispute → user_registry          | After a settlement, the larger-share party gains reputation and the other loses some (source-gated; best-effort so reputation never blocks settlement).                                          |
-| `adjust_reputation` | rental_agreement → user_registry | After a clean move-out (full refund), the tenant gains reputation (source-gated; best-effort so reputation never blocks the refund).                                                             |
+| Call                | Direction                        | Why it exists                                                                                                                                                            |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lock_deposit`      | rental_agreement → escrow        | Tenant funding. Escrow accepts only from the registered agreement contract, so a tenant cannot lock a deposit outside the agreement state machine (e.g. after move-out). |
+| `release_full`      | rental_agreement → escrow        | Full refund when a clean agreement is closed. Escrow re-validates the caller and that the deposit is not already released / dispute-locked.                              |
+| `release_partial`   | rental_agreement → escrow        | Executes the agreed-deduction split the moment the tenant accepts it.                                                                                                    |
+| `open_dispute`      | rental_agreement → dispute       | Delegates dispute records. The agreement contract has already verified the initiator is a party and the state is `INSPECTION_PENDING`.                                   |
+| `get_dispute`       | rental_agreement → dispute       | `close_agreement` reads the dispute record to verify it is truly `Resolved` before allowing the agreement to close.                                                      |
+| `lock_for_dispute`  | dispute → escrow                 | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute.                                                                  |
+| `get_deposit`       | dispute → escrow                 | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state.                |     | `settle_dispute` | dispute → escrow | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
+| `transfer_from`     | escrow → SAC                     | `lock_deposit` pulls the deposit from the tenant into escrow — the tenant must have pre-approved the escrow contract as spender.                                         |
+| `transfer`          | escrow → SAC                     | Every release/settlement moves the agreed amounts out of the escrow contract's own balance to the tenant/landlord.                                                       |
+| `get_user`          | dispute → user_registry          | `set_arbitrator` verifies the proposed address is registered with the `Arbitrator` role before assignment, so a random wallet cannot act as arbitrator.                  |
+| `adjust_reputation` | dispute → user_registry          | After a settlement, the larger-share party gains reputation and the other loses some (source-gated; best-effort so reputation never blocks settlement).                  |
+| `adjust_reputation` | rental_agreement → user_registry | After a clean move-out (full refund), the tenant gains reputation (source-gated; best-effort so reputation never blocks the refund).                                     |
 
 Every call changes real state in the callee — there is no decoration.
 

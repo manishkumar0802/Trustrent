@@ -606,6 +606,7 @@ mod test {
 
     use dispute::DisputeContract;
     use escrow::EscrowContract;
+    use soroban_sdk::token::{StellarAssetClient, TokenClient};
     use tr_common::escrow_api::EscrowClient;
     use tr_common::registry_api::UserRegistryClient;
     use tr_common::{DepositStatus, DisputeState, UserRole};
@@ -618,8 +619,10 @@ mod test {
         env: Env,
         agreement: AgreementContractClient<'static>,
         escrow: EscrowClient<'static>,
+        escrow_id: Address,
         dispute: DisputeClient<'static>,
         registry: UserRegistryClient<'static>,
+        token: Address,
         admin: Address,
         landlord: Address,
         tenant: Address,
@@ -645,7 +648,15 @@ mod test {
 
         let registry = UserRegistryClient::new(client_env, &registry_id);
         registry.initialize(&admin);
-        EscrowClient::new(client_env, &escrow_id).initialize(&admin, &agreement_id, &dispute_id);
+        let token = env
+            .register_stellar_asset_contract_v2(admin.clone())
+            .address();
+        EscrowClient::new(client_env, &escrow_id).initialize(
+            &admin,
+            &agreement_id,
+            &dispute_id,
+            &token,
+        );
         let dispute = DisputeClient::new(client_env, &dispute_id);
         dispute.initialize(&admin, &agreement_id, &escrow_id, &registry_id);
 
@@ -664,12 +675,27 @@ mod test {
             env,
             agreement,
             escrow: EscrowClient::new(client_env, &escrow_id),
+            escrow_id,
             dispute,
             registry,
+            token,
             admin,
             landlord,
             tenant,
         }
+    }
+
+    /// Mint the deposit to the tenant and approve the escrow contract to
+    /// spend it — the off-chain pre-step to `agreement.lock_deposit`.
+    fn fund_tenant(h: &Harness) {
+        StellarAssetClient::new(&h.env, &h.token).mint(&h.tenant, &DEPOSIT);
+        // Well below the host's max ledger so the allowance never expires.
+        TokenClient::new(&h.env, &h.token).approve(
+            &h.tenant,
+            &h.escrow_id,
+            &DEPOSIT,
+            &5_000_000u32,
+        );
     }
 
     fn create_and_join(h: &Harness) -> u32 {
@@ -686,6 +712,7 @@ mod test {
 
     fn to_move_out_requested(h: &Harness) -> u32 {
         let id = create_and_join(h);
+        fund_tenant(h);
         h.agreement.lock_deposit(&id, &h.tenant);
         h.agreement.request_move_out(&id, &h.tenant);
         id
@@ -749,6 +776,7 @@ mod test {
         let h = setup();
         let id = create_and_join(&h);
 
+        fund_tenant(&h);
         h.agreement.lock_deposit(&id, &h.tenant);
 
         let deposit = h.escrow.get_deposit(&id);
@@ -795,6 +823,7 @@ mod test {
                 .unwrap(),
             Error::DepositNotFound
         );
+        fund_tenant(&h);
         h.agreement.lock_deposit(&id, &h.tenant);
 
         // Move-out before the deposit is locked is fine — but the state must
@@ -1101,6 +1130,7 @@ mod test {
         let id = create_and_join(&h);
         let stranger = Address::generate(&h.env);
 
+        fund_tenant(&h);
         h.agreement.lock_deposit(&id, &h.tenant);
 
         // Tenant cannot approve inspections.
