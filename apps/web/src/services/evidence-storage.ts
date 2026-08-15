@@ -21,10 +21,7 @@ class LocalMemoryProvider implements StorageProvider {
     payload: Blob | Uint8Array,
     meta?: Record<string, unknown>,
   ): Promise<EvidenceReference["storage"]> {
-    const bytes =
-      payload instanceof Blob
-        ? new Uint8Array(await payload.arrayBuffer())
-        : payload;
+    const bytes = payload instanceof Blob ? new Uint8Array(await payload.arrayBuffer()) : payload;
     const hash = await sha256Hex(bytes);
     const uri = `local://${hash}?name=${encodeURIComponent(String(meta?.name ?? "evidence"))}`;
     this.store.set(uri, { payload: bytes, uri });

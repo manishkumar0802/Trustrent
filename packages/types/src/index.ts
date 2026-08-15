@@ -44,28 +44,15 @@ export type MoveOutStage = (typeof MOVE_OUT_STAGES)[number];
 export const DISPUTE_STATES = ["OPENED", "UNDER_REVIEW", "RESOLVED"] as const;
 export type DisputeState = (typeof DISPUTE_STATES)[number];
 
-export const DEPOSIT_STATUSES = [
-  "LOCKED",
-  "PARTIALLY_RELEASED",
-  "RELEASED",
-  "DISPUTED",
-] as const;
+export const DEPOSIT_STATUSES = ["LOCKED", "PARTIALLY_RELEASED", "RELEASED", "DISPUTED"] as const;
 
 export type DepositStatus = (typeof DEPOSIT_STATUSES)[number];
 
-export const SETTLEMENT_TYPES = [
-  "FULL_REFUND",
-  "PARTIAL_DEDUCTION",
-  "DISPUTE_LOCKED",
-] as const;
+export const SETTLEMENT_TYPES = ["FULL_REFUND", "PARTIAL_DEDUCTION", "DISPUTE_LOCKED"] as const;
 
 export type SettlementType = (typeof SETTLEMENT_TYPES)[number];
 
-export const EVIDENCE_KINDS = [
-  "FINAL_DUES",
-  "ROOM_CONDITION",
-  "DISPUTE_SUPPORT",
-] as const;
+export const EVIDENCE_KINDS = ["FINAL_DUES", "ROOM_CONDITION", "DISPUTE_SUPPORT"] as const;
 
 export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
 

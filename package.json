@@ -2,8 +2,15 @@
   "name": "trustrent",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*", "scripts"],
-  "engines": { "node": ">=20.0.0" },
+  "description": "TrustRent — rental security deposits escrowed on Stellar Soroban. Your deposit. Locked fairly. Released transparently.",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "scripts"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "npm run dev --workspace @trustrent/web",
     "dev:web": "npm run dev --workspace @trustrent/web",
@@ -21,5 +28,7 @@
     "seed": "npm run seed --workspace @trustrent/scripts",
     "deploy": "npm run deploy --workspace @trustrent/scripts"
   },
-  "devDependencies": { "prettier": "^3.4.0" }
+  "devDependencies": {
+    "prettier": "^3.4.0"
+  }
 }

@@ -20,7 +20,7 @@ breaks the hash), and lets us swap providers freely.
 ```ts
 interface StorageProvider {
   id: "local" | "ipfs" | "arweave" | "s3" | "other";
-  put(payload: Blob | Uint8Array, meta?): Promise<{ provider, uri }>;
+  put(payload: Blob | Uint8Array, meta?): Promise<{ provider; uri }>;
   get(ref): Promise<Blob>;
 }
 ```
@@ -43,5 +43,5 @@ buckets with signed URLs). Selection criteria:
 
 ## UI clarity
 
-The UI must always communicate that the blockchain stores the *proof*, not
+The UI must always communicate that the blockchain stores the _proof_, not
 the file. The evidence panel in the agreement detail page does this explicitly.

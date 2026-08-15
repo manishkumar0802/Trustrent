@@ -22,10 +22,7 @@ export default function SettingsPage() {
       </header>
 
       <Card>
-        <CardHeader
-          title="Stellar network"
-          action={<Badge tone="sage">Testnet</Badge>}
-        />
+        <CardHeader title="Stellar network" action={<Badge tone="sage">Testnet</Badge>} />
         <CardBody className="space-y-1.5 text-sm">
           <Row label="Network" value="Test SDF Network ; September 2015" />
           <Row label="RPC" value="https://soroban-testnet.stellar.org" mono />
@@ -37,15 +34,18 @@ export default function SettingsPage() {
         <CardHeader title="Evidence storage" action={<Badge tone="neutral">local</Badge>} />
         <CardBody>
           <p className="text-sm leading-relaxed text-ink-500">
-            Files are stored off-chain through a pluggable provider; only content
-            references land on-chain. The provider can be swapped for IPFS,
-            Arweave or S3 in phase 2 (see docs/storage.md).
+            Files are stored off-chain through a pluggable provider; only content references land
+            on-chain. The provider can be swapped for IPFS, Arweave or S3 in phase 2 (see
+            docs/storage.md).
           </p>
         </CardBody>
       </Card>
 
       <Card>
-        <CardHeader title="Contracts" subtitle="Placeholder testnet addresses — replaced at deploy time" />
+        <CardHeader
+          title="Contracts"
+          subtitle="Placeholder testnet addresses — replaced at deploy time"
+        />
         <CardBody className="space-y-2">
           {CONTRACTS.map((c) => (
             <div key={c.name} className="flex items-center justify-between gap-3 text-sm">
@@ -59,7 +59,9 @@ export default function SettingsPage() {
       <Card>
         <CardHeader title="Danger zone" />
         <CardBody className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink-400">Account actions arrive with wallet auth in phase 2.</p>
+          <p className="text-sm text-ink-400">
+            Account actions arrive with wallet auth in phase 2.
+          </p>
           <Button variant="danger" size="sm" disabled title="Arrives in phase 2">
             Disconnect demo
           </Button>

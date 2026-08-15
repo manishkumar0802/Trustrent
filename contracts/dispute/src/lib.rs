@@ -12,7 +12,9 @@
 //! Flow: open_dispute → propose_resolution (landlord) → accept_resolution
 //! (tenant) → resolve_dispute (either party executes the accepted split).
 
-use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, String, Symbol};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, panic_with_error, Address, Env, String, Symbol,
+};
 
 use tr_common::escrow_api::EscrowClient;
 use tr_common::events;

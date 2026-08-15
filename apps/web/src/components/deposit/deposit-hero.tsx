@@ -38,8 +38,8 @@ export function DepositHero({
 
           <p className="mt-4 text-sm leading-relaxed text-ink-500">
             Held by the TrustRent escrow contract on Stellar{" "}
-            <span className="font-medium text-ink-700">Testnet</span>. Only the
-            contract can release it — neither side can withdraw unilaterally.
+            <span className="font-medium text-ink-700">Testnet</span>. Only the contract can release
+            it — neither side can withdraw unilaterally.
           </p>
         </div>
 

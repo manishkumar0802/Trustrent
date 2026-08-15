@@ -32,7 +32,12 @@ export function LifecycleTimeline({
           return (
             <li key={step.state} className="flex flex-1 flex-col items-center gap-2 text-center">
               <div className="flex w-full items-center">
-                <span className={cn("h-px flex-1", i === 0 ? "bg-transparent" : done ? "bg-forest-700" : "bg-border")} />
+                <span
+                  className={cn(
+                    "h-px flex-1",
+                    i === 0 ? "bg-transparent" : done ? "bg-forest-700" : "bg-border",
+                  )}
+                />
                 <span
                   className={cn(
                     "flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
@@ -43,10 +48,21 @@ export function LifecycleTimeline({
                 >
                   {done ? <IconCheck className="size-3.5" /> : i + 1}
                 </span>
-                <span className={cn("h-px flex-1", i === LIFECYCLE_STEPS.length - 1 ? "bg-transparent" : done ? "bg-forest-700" : "bg-border")} />
+                <span
+                  className={cn(
+                    "h-px flex-1",
+                    i === LIFECYCLE_STEPS.length - 1
+                      ? "bg-transparent"
+                      : done
+                        ? "bg-forest-700"
+                        : "bg-border",
+                  )}
+                />
               </div>
               <div className="px-1">
-                <p className={cn("text-xs font-medium", active ? "text-forest-800" : "text-ink-500")}>
+                <p
+                  className={cn("text-xs font-medium", active ? "text-forest-800" : "text-ink-500")}
+                >
                   {step.label}
                 </p>
                 <p className="mt-0.5 hidden text-[11px] leading-snug text-ink-300 lg:block">
@@ -85,7 +101,9 @@ export function LifecycleTimeline({
                 {done ? <IconCheck className="size-3.5" /> : i + 1}
               </span>
               <div className="min-w-0 pt-0.5">
-                <p className={cn("text-sm font-medium", active ? "text-forest-800" : "text-ink-700")}>
+                <p
+                  className={cn("text-sm font-medium", active ? "text-forest-800" : "text-ink-700")}
+                >
                   {step.label}
                 </p>
                 <p className="text-xs text-ink-400">{step.description}</p>

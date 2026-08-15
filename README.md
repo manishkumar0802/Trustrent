@@ -11,8 +11,8 @@ evidence-backed move-out and settlement process.
   dispute) and Tenant (join, fund deposit, request move-out, submit evidence,
   accept/reject deductions, dispute).
 - **Escrow lifecycle:** `CREATED → ACTIVE → MOVE_OUT_REQUESTED →
-  EVIDENCE_SUBMITTED → INSPECTION_PENDING → APPROVED / DISPUTED →
-  SETTLEMENT → CLOSED`.
+EVIDENCE_SUBMITTED → INSPECTION_PENDING → APPROVED / DISPUTED →
+SETTLEMENT → CLOSED`.
 - **Network:** Stellar **Testnet** during development (mainnet disabled).
 - **Evidence:** files stored off-chain; the chain keeps only content
   references (hash/CID, submitter, timestamp).

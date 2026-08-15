@@ -111,8 +111,8 @@ export default function MoveOutPage() {
 
             <p className="flex items-start gap-2 text-xs leading-relaxed text-ink-400">
               <IconShield className="mt-0.5 size-3.5 shrink-0" />
-              The blockchain records the content reference, submitter and timestamp — not the
-              file itself. That keeps evidence tamper-evident and cheap to store.
+              The blockchain records the content reference, submitter and timestamp — not the file
+              itself. That keeps evidence tamper-evident and cheap to store.
             </p>
 
             <div className="flex justify-end">
@@ -125,8 +125,8 @@ export default function MoveOutPage() {
           <CardHeader title="Incoming move-out" subtitle="Landlord review queue" />
           <CardBody className="space-y-4 text-sm text-ink-500">
             <p>
-              As a landlord you review move-out requests, evidence and proposed deductions. In
-              phase 2 this page reads the on-chain move-out state and lets you approve or dispute.
+              As a landlord you review move-out requests, evidence and proposed deductions. In phase
+              2 this page reads the on-chain move-out state and lets you approve or dispute.
             </p>
             <Button variant="secondary" title="Arrives in phase 2">
               Review evidence

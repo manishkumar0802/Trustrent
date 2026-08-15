@@ -35,11 +35,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new Event(ROLE_CHANGE_EVENT));
   }
 
-  return (
-    <RoleContext.Provider value={{ role, setRole }}>
-      {children}
-    </RoleContext.Provider>
-  );
+  return <RoleContext.Provider value={{ role, setRole }}>{children}</RoleContext.Provider>;
 }
 
 export function useRole(): RoleContextValue {

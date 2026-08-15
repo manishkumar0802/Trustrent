@@ -2,6 +2,7 @@
   "name": "@trustrent/web",
   "version": "0.1.0",
   "private": true,
+  "description": "TrustRent web app — Next.js + React + Tailwind. Premium property-finance UI for escrowed security deposits.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

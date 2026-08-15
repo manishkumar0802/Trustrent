@@ -3,6 +3,7 @@
 Fastify service behind the TrustRent web app.
 
 Phase 1 provides:
+
 - `GET /health` — liveness + network config summary
 - `GET /api/agreements` / `GET /api/agreements/:id` — in-memory mock service typed
   by `@trustrent/types` (no persistence, no chain calls)

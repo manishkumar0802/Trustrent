@@ -10,9 +10,7 @@ describe("formatINR", () => {
 
 describe("shortAddress", () => {
   it("truncates long addresses", () => {
-    expect(shortAddress("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456")).toBe(
-      "GABCDE…3456",
-    );
+    expect(shortAddress("GABCDEFGHIJKLMNOPQRSTUVWXYZ123456")).toBe("GABCDE…3456");
   });
   it("leaves short addresses untouched", () => {
     expect(shortAddress("GABC")).toBe("GABC");

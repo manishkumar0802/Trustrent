@@ -1,9 +1,4 @@
-import type {
-  AgreementState,
-  ContractEventName,
-  DepositStatus,
-  Role,
-} from "@trustrent/types";
+import type { AgreementState, ContractEventName, DepositStatus, Role } from "@trustrent/types";
 
 /* ------------------------------------------------------------------ */
 /* Lifecycle                                                           */
@@ -52,19 +47,14 @@ export const LIFECYCLE_STEPS: LifecycleStep[] = [
   { state: "CLOSED", label: "Closed", description: "Funds released, done" },
 ];
 
-export const LIFECYCLE_STATE_ORDER: AgreementState[] = LIFECYCLE_STEPS.map(
-  (s) => s.state,
-);
+export const LIFECYCLE_STATE_ORDER: AgreementState[] = LIFECYCLE_STEPS.map((s) => s.state);
 
 export function lifecycleIndex(state: AgreementState): number {
   const i = LIFECYCLE_STATE_ORDER.indexOf(state);
   return i === -1 ? 0 : i;
 }
 
-export function isActiveOrLater(
-  state: AgreementState,
-  target: AgreementState,
-): boolean {
+export function isActiveOrLater(state: AgreementState, target: AgreementState): boolean {
   return lifecycleIndex(state) >= lifecycleIndex(target);
 }
 

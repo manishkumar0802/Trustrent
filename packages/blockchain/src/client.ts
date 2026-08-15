@@ -1,8 +1,4 @@
-import type {
-  Agreement,
-  DisputeRecord,
-  EvidenceReference,
-} from "@trustrent/types";
+import type { Agreement, DisputeRecord, EvidenceReference } from "@trustrent/types";
 import { getNetworkConfig, type NetworkConfig } from "./config";
 
 /**
@@ -23,9 +19,7 @@ import { getNetworkConfig, type NetworkConfig } from "./config";
 
 export class NotImplementedError extends Error {
   constructor(method: string) {
-    super(
-      `${method} is not implemented in phase 1. See packages/blockchain/README.md`,
-    );
+    super(`${method} is not implemented in phase 1. See packages/blockchain/README.md`);
     this.name = "NotImplementedError";
   }
 }
@@ -88,11 +82,7 @@ export class TrustRentClient {
   }
 
   /** Open a dispute (dispute.open). */
-  async openDispute(
-    agreementId: string,
-    initiator: string,
-    reason: string,
-  ): Promise<void> {
+  async openDispute(agreementId: string, initiator: string, reason: string): Promise<void> {
     throw new NotImplementedError("TrustRentClient.openDispute");
   }
 

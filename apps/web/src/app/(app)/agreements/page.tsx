@@ -61,10 +61,7 @@ function AgreementRow({ agreement }: { agreement: Agreement }) {
 
         <div className="mt-4 flex items-center gap-3">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ivory-100">
-            <div
-              className="h-full rounded-full bg-forest-700"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full rounded-full bg-forest-700" style={{ width: `${progress}%` }} />
           </div>
           <span className="text-xs font-medium text-ink-500">{progress}% of lifecycle</span>
           <IconChevronRight className="size-4 text-ink-300" />

@@ -15,8 +15,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     soroban: {
       network: env.SOROBAN_NETWORK ?? "testnet",
       rpcUrl: env.SOROBAN_RPC_URL ?? "https://soroban-testnet.stellar.org",
-      networkPassphrase:
-        env.SOROBAN_NETWORK_PASSPHRASE ?? "Test SDF Network ; September 2015",
+      networkPassphrase: env.SOROBAN_NETWORK_PASSPHRASE ?? "Test SDF Network ; September 2015",
     },
     storageProvider: env.STORAGE_PROVIDER ?? "local",
   };

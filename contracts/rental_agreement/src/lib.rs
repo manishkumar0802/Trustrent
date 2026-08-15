@@ -20,7 +20,9 @@
 //! INSPECTION_PENDING → DISPUTED → RESOLVED → SETTLEMENT → CLOSED.
 //! Invalid transitions return `Error::InvalidState`.
 
-use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, String, Symbol};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, panic_with_error, Address, Env, String, Symbol,
+};
 
 use tr_common::dispute_api::DisputeClient;
 use tr_common::escrow_api::EscrowClient;
@@ -561,14 +563,6 @@ mod test {
     const RENT: i128 = 18_000_000_000;
     const DEPOSIT: i128 = 30_000_000_000;
 
-    trait TestUnwrap: Sized {
-        fn unwrap(self) -> Self {
-            self
-        }
-    }
-
-    impl<T> TestUnwrap for T {}
-
     struct Harness {
         env: Env,
         agreement: AgreementContractClient<'static>,
@@ -616,38 +610,33 @@ mod test {
     }
 
     fn create_and_join(h: &Harness) -> u32 {
-        let id = h
-            .agreement
-            .create_agreement(
-                &h.landlord,
-                &Some(h.tenant.clone()),
-                &SorobanString::from_str(&h.env, "Greenview 1BHK"),
-                &RENT,
-                &DEPOSIT,
-            )
-            .unwrap();
-        h.agreement.join_agreement(&id, &h.tenant).unwrap();
+        let id = h.agreement.create_agreement(
+            &h.landlord,
+            &Some(h.tenant.clone()),
+            &SorobanString::from_str(&h.env, "Greenview 1BHK"),
+            &RENT,
+            &DEPOSIT,
+        );
+        h.agreement.join_agreement(&id, &h.tenant);
         id
     }
 
     fn to_move_out_requested(h: &Harness) -> u32 {
         let id = create_and_join(h);
-        h.agreement.lock_deposit(&id, &h.tenant).unwrap();
-        h.agreement.request_move_out(&id, &h.tenant).unwrap();
+        h.agreement.lock_deposit(&id, &h.tenant);
+        h.agreement.request_move_out(&id, &h.tenant);
         id
     }
 
     fn to_inspection_pending(h: &Harness) -> u32 {
         let id = to_move_out_requested(h);
-        h.agreement
-            .submit_evidence(
-                &id,
-                &h.tenant,
-                &EvidenceType::MoveOut,
-                &SorobanString::from_str(&h.env, "QmZ9f3kXp..."),
-            )
-            .unwrap();
-        h.agreement.approve_inspection(&id, &h.landlord).unwrap();
+        h.agreement.submit_evidence(
+            &id,
+            &h.tenant,
+            &EvidenceType::MoveOut,
+            &SorobanString::from_str(&h.env, "QmZ9f3kXp..."),
+        );
+        h.agreement.approve_inspection(&id, &h.landlord);
         id
     }
 
@@ -655,18 +644,15 @@ mod test {
     fn agreement_creation_and_joining() {
         let h = setup();
 
-        let id = h
-            .agreement
-            .create_agreement(
-                &h.landlord,
-                &Some(h.tenant.clone()),
-                &SorobanString::from_str(&h.env, "Greenview 1BHK"),
-                &RENT,
-                &DEPOSIT,
-            )
-            .unwrap();
+        let id = h.agreement.create_agreement(
+            &h.landlord,
+            &Some(h.tenant.clone()),
+            &SorobanString::from_str(&h.env, "Greenview 1BHK"),
+            &RENT,
+            &DEPOSIT,
+        );
 
-        let record = h.agreement.get_agreement(&id).unwrap();
+        let record = h.agreement.get_agreement(&id);
         assert_eq!(record.state, AgreementState::Created);
         assert_eq!(record.landlord, h.landlord);
         assert_eq!(record.deposit_amount, DEPOSIT);
@@ -682,11 +668,8 @@ mod test {
             Error::Unauthorized
         );
 
-        h.agreement.join_agreement(&id, &h.tenant).unwrap();
-        assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
-            AgreementState::Active
-        );
+        h.agreement.join_agreement(&id, &h.tenant);
+        assert_eq!(h.agreement.get_agreement(&id).state, AgreementState::Active);
 
         // Joining twice fails.
         assert_eq!(
@@ -703,9 +686,9 @@ mod test {
         let h = setup();
         let id = create_and_join(&h);
 
-        h.agreement.lock_deposit(&id, &h.tenant).unwrap();
+        h.agreement.lock_deposit(&id, &h.tenant);
 
-        let deposit = h.escrow.get_deposit(&id).unwrap();
+        let deposit = h.escrow.get_deposit(&id);
         assert_eq!(deposit.amount, DEPOSIT);
         assert_eq!(deposit.status, DepositStatus::Locked);
         assert_eq!(deposit.tenant, h.tenant);
@@ -721,16 +704,13 @@ mod test {
         );
 
         // Locking before the agreement is ACTIVE is rejected.
-        let early = h
-            .agreement
-            .create_agreement(
-                &h.landlord,
-                &Some(h.tenant.clone()),
-                &SorobanString::from_str(&h.env, "Studio"),
-                &RENT,
-                &DEPOSIT,
-            )
-            .unwrap();
+        let early = h.agreement.create_agreement(
+            &h.landlord,
+            &Some(h.tenant.clone()),
+            &SorobanString::from_str(&h.env, "Studio"),
+            &RENT,
+            &DEPOSIT,
+        );
         assert_eq!(
             h.agreement
                 .try_lock_deposit(&early, &h.tenant)
@@ -752,13 +732,13 @@ mod test {
                 .unwrap(),
             Error::DepositNotFound
         );
-        h.agreement.lock_deposit(&id, &h.tenant).unwrap();
+        h.agreement.lock_deposit(&id, &h.tenant);
 
         // Move-out before the deposit is locked is fine — but the state must
         // be ACTIVE.
-        h.agreement.request_move_out(&id, &h.tenant).unwrap();
+        h.agreement.request_move_out(&id, &h.tenant);
         assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
+            h.agreement.get_agreement(&id).state,
             AgreementState::MoveOutRequested
         );
 
@@ -771,21 +751,18 @@ mod test {
             Error::InvalidState
         );
 
-        let evidence_id = h
-            .agreement
-            .submit_evidence(
-                &id,
-                &h.tenant,
-                &EvidenceType::MoveOut,
-                &SorobanString::from_str(&h.env, "QmZ9f3kXp..."),
-            )
-            .unwrap();
+        let evidence_id = h.agreement.submit_evidence(
+            &id,
+            &h.tenant,
+            &EvidenceType::MoveOut,
+            &SorobanString::from_str(&h.env, "QmZ9f3kXp..."),
+        );
         assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
+            h.agreement.get_agreement(&id).state,
             AgreementState::EvidenceSubmitted
         );
 
-        let evidence = h.agreement.get_evidence(&evidence_id).unwrap();
+        let evidence = h.agreement.get_evidence(&evidence_id);
         assert_eq!(evidence.agreement_id, id);
         assert_eq!(evidence.evidence_type, EvidenceType::MoveOut);
         assert_eq!(evidence.submitted_by, h.tenant);
@@ -808,14 +785,12 @@ mod test {
         );
 
         // The landlord can submit damage evidence too (still in the flow).
-        h.agreement
-            .submit_evidence(
-                &id,
-                &h.landlord,
-                &EvidenceType::DamageEvidence,
-                &SorobanString::from_str(&h.env, "QmAbC..."),
-            )
-            .unwrap();
+        h.agreement.submit_evidence(
+            &id,
+            &h.landlord,
+            &EvidenceType::DamageEvidence,
+            &SorobanString::from_str(&h.env, "QmAbC..."),
+        );
     }
 
     #[test]
@@ -825,25 +800,22 @@ mod test {
 
         // First approve call: start inspection.
         assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
+            h.agreement.get_agreement(&id).state,
             AgreementState::InspectionPending
         );
 
         // Second approve call: approval.
-        h.agreement.approve_inspection(&id, &h.landlord).unwrap();
+        h.agreement.approve_inspection(&id, &h.landlord);
         assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
+            h.agreement.get_agreement(&id).state,
             AgreementState::Approved
         );
 
         // Closing triggers the full refund to the tenant.
-        h.agreement.close_agreement(&id, &h.landlord).unwrap();
-        assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
-            AgreementState::Closed
-        );
+        h.agreement.close_agreement(&id, &h.landlord);
+        assert_eq!(h.agreement.get_agreement(&id).state, AgreementState::Closed);
 
-        let deposit = h.escrow.get_deposit(&id).unwrap();
+        let deposit = h.escrow.get_deposit(&id);
         assert_eq!(deposit.status, DepositStatus::Released);
         assert_eq!(deposit.released, DEPOSIT);
     }
@@ -852,7 +824,7 @@ mod test {
     fn partial_deduction_flow() {
         let h = setup();
         let id = to_inspection_pending(&h);
-        h.agreement.approve_inspection(&id, &h.landlord).unwrap();
+        h.agreement.approve_inspection(&id, &h.landlord);
 
         // Deduction cannot exceed the deposit.
         assert_eq!(
@@ -868,21 +840,19 @@ mod test {
             Error::InvalidDeduction
         );
 
-        h.agreement
-            .propose_deduction(
-                &id,
-                &h.landlord,
-                &5_000_000_000i128,
-                &SorobanString::from_str(&h.env, "repaint"),
-            )
-            .unwrap();
-        let record = h.agreement.get_agreement(&id).unwrap();
+        h.agreement.propose_deduction(
+            &id,
+            &h.landlord,
+            &5_000_000_000i128,
+            &SorobanString::from_str(&h.env, "repaint"),
+        );
+        let record = h.agreement.get_agreement(&id);
         assert_eq!(record.state, AgreementState::Settlement);
         assert_eq!(record.pending_deduction, Some(5_000_000_000i128));
 
         // Tenant accepts → the split is released in escrow.
-        h.agreement.accept_deduction(&id, &h.tenant).unwrap();
-        let deposit = h.escrow.get_deposit(&id).unwrap();
+        h.agreement.accept_deduction(&id, &h.tenant);
+        let deposit = h.escrow.get_deposit(&id);
         assert_eq!(deposit.released, DEPOSIT);
         assert_eq!(deposit.status, DepositStatus::Released);
 
@@ -895,11 +865,8 @@ mod test {
             Error::SettlementAlreadyExecuted
         );
 
-        h.agreement.close_agreement(&id, &h.tenant).unwrap();
-        assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
-            AgreementState::Closed
-        );
+        h.agreement.close_agreement(&id, &h.tenant);
+        assert_eq!(h.agreement.get_agreement(&id).state, AgreementState::Closed);
         // Closing again fails (already CLOSED).
         assert_eq!(
             h.agreement
@@ -916,47 +883,38 @@ mod test {
         let id = to_inspection_pending(&h); // state INSPECTION_PENDING
 
         // Tenant opens a dispute.
-        h.agreement
-            .open_dispute(
-                &id,
-                &h.tenant,
-                &SorobanString::from_str(&h.env, "deposit withheld"),
-            )
-            .unwrap();
+        h.agreement.open_dispute(
+            &id,
+            &h.tenant,
+            &SorobanString::from_str(&h.env, "deposit withheld"),
+        );
         assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
+            h.agreement.get_agreement(&id).state,
             AgreementState::Disputed
         );
 
         // Dispute recorded; deposit frozen in escrow.
-        let dispute = h.dispute.get_dispute(&id).unwrap();
+        let dispute = h.dispute.get_dispute(&id);
         assert_eq!(dispute.state, DisputeState::Opened);
         assert_eq!(dispute.initiator, h.tenant);
-        assert_eq!(
-            h.escrow.get_deposit(&id).unwrap().status,
-            DepositStatus::Disputed
-        );
+        assert_eq!(h.escrow.get_deposit(&id).status, DepositStatus::Disputed);
 
         // Landlord proposes a resolution; tenant accepts; either party executes.
         h.dispute
-            .propose_resolution(&id, &h.landlord, &25_000_000_000i128, &5_000_000_000i128)
-            .unwrap();
-        h.dispute.accept_resolution(&id, &h.tenant).unwrap();
-        h.dispute.resolve_dispute(&id, &h.tenant).unwrap();
+            .propose_resolution(&id, &h.landlord, &25_000_000_000i128, &5_000_000_000i128);
+        h.dispute.accept_resolution(&id, &h.tenant);
+        h.dispute.resolve_dispute(&id, &h.tenant);
 
-        let dispute = h.dispute.get_dispute(&id).unwrap();
+        let dispute = h.dispute.get_dispute(&id);
         assert_eq!(dispute.state, DisputeState::Resolved);
 
-        let deposit = h.escrow.get_deposit(&id).unwrap();
+        let deposit = h.escrow.get_deposit(&id);
         assert_eq!(deposit.status, DepositStatus::Released);
         assert_eq!(deposit.released, DEPOSIT);
 
         // Agreement closes after the resolved dispute.
-        h.agreement.close_agreement(&id, &h.tenant).unwrap();
-        assert_eq!(
-            h.agreement.get_agreement(&id).unwrap().state,
-            AgreementState::Closed
-        );
+        h.agreement.close_agreement(&id, &h.tenant);
+        assert_eq!(h.agreement.get_agreement(&id).state, AgreementState::Closed);
     }
 
     #[test]
@@ -965,16 +923,13 @@ mod test {
         let _id = create_and_join(&h);
 
         // CREATED → CLOSED fails.
-        let fresh = h
-            .agreement
-            .create_agreement(
-                &h.landlord,
-                &Some(h.tenant.clone()),
-                &SorobanString::from_str(&h.env, "Fresh"),
-                &RENT,
-                &DEPOSIT,
-            )
-            .unwrap();
+        let fresh = h.agreement.create_agreement(
+            &h.landlord,
+            &Some(h.tenant.clone()),
+            &SorobanString::from_str(&h.env, "Fresh"),
+            &RENT,
+            &DEPOSIT,
+        );
         assert_eq!(
             h.agreement
                 .try_close_agreement(&fresh, &h.landlord)
@@ -986,17 +941,15 @@ mod test {
         // CLOSED → ACTIVE is impossible: no function moves out of Closed, and
         // join requires CREATED.
         let done = to_move_out_requested(&h);
-        h.agreement
-            .submit_evidence(
-                &done,
-                &h.tenant,
-                &EvidenceType::MoveOut,
-                &SorobanString::from_str(&h.env, "hash"),
-            )
-            .unwrap();
-        h.agreement.approve_inspection(&done, &h.landlord).unwrap();
-        h.agreement.approve_inspection(&done, &h.landlord).unwrap();
-        h.agreement.close_agreement(&done, &h.tenant).unwrap();
+        h.agreement.submit_evidence(
+            &done,
+            &h.tenant,
+            &EvidenceType::MoveOut,
+            &SorobanString::from_str(&h.env, "hash"),
+        );
+        h.agreement.approve_inspection(&done, &h.landlord);
+        h.agreement.approve_inspection(&done, &h.landlord);
+        h.agreement.close_agreement(&done, &h.tenant);
         assert_eq!(
             h.agreement
                 .try_join_agreement(&done, &h.tenant)
@@ -1049,7 +1002,7 @@ mod test {
         let id = create_and_join(&h);
         let stranger = Address::generate(&h.env);
 
-        h.agreement.lock_deposit(&id, &h.tenant).unwrap();
+        h.agreement.lock_deposit(&id, &h.tenant);
 
         // Tenant cannot approve inspections.
         assert_eq!(
@@ -1061,7 +1014,7 @@ mod test {
         );
 
         // Move-out is tenant-only — the landlord is a party but not the tenant.
-        h.agreement.request_move_out(&id, &h.tenant).unwrap();
+        h.agreement.request_move_out(&id, &h.tenant);
         assert_eq!(
             h.agreement
                 .try_request_move_out(&id, &h.landlord)

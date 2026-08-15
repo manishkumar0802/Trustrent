@@ -1,6 +1,6 @@
 # Deployment
 
-Phase 1 provides the *scaffold* — the deploy orchestration is a typed stub that
+Phase 1 provides the _scaffold_ — the deploy orchestration is a typed stub that
 validates configuration and prints the plan. Real deployment lands in phase 2,
 once the contracts are finalized.
 
