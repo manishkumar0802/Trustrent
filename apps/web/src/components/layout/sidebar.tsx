@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { RoleSwitcher } from "../role-switcher";
+import { CurrentUserReputation } from "../deposit/current-user-reputation";
+import { MOCK_AGREEMENTS } from "@/data/mock-data";
 import { NAV_ICONS } from "./nav-icons";
 
 export function Sidebar() {
@@ -46,6 +48,12 @@ export function Sidebar() {
 
       <div className="space-y-3 border-t border-border px-4 py-4">
         <RoleSwitcher className="w-full justify-center" />
+        <div className="flex items-center justify-center">
+          <CurrentUserReputation
+            landlord={MOCK_AGREEMENTS[0].landlord}
+            tenant={MOCK_AGREEMENTS[0].tenant}
+          />
+        </div>
         <p className="px-1 text-[11px] leading-relaxed text-ink-300">
           Stellar <span className="font-medium text-ink-400">Testnet</span> · Phase 1 scaffold —
           on-chain actions land in phase 2.
