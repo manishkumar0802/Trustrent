@@ -1,4 +1,4 @@
-import type { Agreement, ContractEvent } from "@trustrent/types";
+import type { Agreement, ContractEvent, UserRecord } from "@trustrent/types";
 
 /**
  * PHASE 1 DEMO DATA — intentionally separate from any on-chain state.
@@ -8,6 +8,56 @@ import type { Agreement, ContractEvent } from "@trustrent/types";
  */
 
 export const ESCROW_CONTRACT_ID = "CCQJZ6MOVE3UPPERESCROWDEMO000001";
+
+/**
+ * Demo mirror of the user registry (`contracts/user_registry`): wallet →
+ * role + reputation. Scores sit on the neutral baseline (50) and shift with
+ * outcomes — e.g. Ishita's clean move-out (full refund, AG-0982) lifted her
+ * score. Keyed by Stellar-style public key (placeholder in phase 1).
+ */
+export const MOCK_USERS: UserRecord[] = [
+  {
+    address: "GTENMEHTA0000000000000000000002",
+    role: "TENANT",
+    reputation: 60,
+    registeredAt: "2026-01-05T09:00:00.000Z",
+  },
+  {
+    address: "GALNDSHARMA00000000000000000001",
+    role: "LANDLORD",
+    reputation: 55,
+    registeredAt: "2025-11-12T10:00:00.000Z",
+  },
+  {
+    address: "GTENRAO0000000000000000000004",
+    role: "TENANT",
+    reputation: 50,
+    registeredAt: "2026-02-01T12:00:00.000Z",
+  },
+  {
+    address: "GALNDKUMAR0000000000000000000003",
+    role: "LANDLORD",
+    reputation: 62,
+    registeredAt: "2026-01-20T09:30:00.000Z",
+  },
+  {
+    address: "GTENVERMA00000000000000000000005",
+    role: "TENANT",
+    reputation: 70,
+    registeredAt: "2025-09-15T08:00:00.000Z",
+  },
+];
+
+/** Look up a user's registry record (role + reputation) by wallet address. */
+export function getMockUser(address: string): UserRecord | undefined {
+  return MOCK_USERS.find((u) => u.address === address);
+}
+
+/** Reputation score for a party (defaults to the neutral baseline 50). */
+export function getMockReputation(address: string | undefined): number {
+  if (!address) return 50;
+  return getMockUser(address)?.reputation ?? 50;
+}
 
 export const MOCK_AGREEMENTS: Agreement[] = [
   {

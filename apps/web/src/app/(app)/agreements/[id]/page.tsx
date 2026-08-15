@@ -11,8 +11,10 @@ import { EvidencePanel } from "@/components/deposit/evidence-panel";
 import { ActivityFeed } from "@/components/deposit/activity-feed";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconArrowLeft, IconHome } from "@/components/icons";
-import { MOCK_EVENTS } from "@/data/mock-data";
+import { ReputationBadge } from "@/components/ui/reputation-badge";
+import { IconArrowLeft, IconHome, IconUser } from "@/components/icons";
+import { MOCK_EVENTS, getMockReputation } from "@/data/mock-data";
+import type { Party } from "@trustrent/types";
 
 export default function AgreementDetailPage() {
   const params = useParams<{ id: string }>();
@@ -47,6 +49,17 @@ export default function AgreementDetailPage() {
         </CardBody>
       </Card>
 
+      <Card>
+        <CardHeader
+          title="Parties & reputation"
+          subtitle="Roles and registry scores — neutral baseline 50, outcomes adjust it"
+        />
+        <CardBody className="grid gap-3 sm:grid-cols-2">
+          <PartyCard party={agreement.landlord} />
+          <PartyCard party={agreement.tenant} />
+        </CardBody>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Move-out evidence" subtitle="References only — files live off-chain" />
@@ -68,6 +81,23 @@ export default function AgreementDetailPage() {
         <code className="rounded bg-ivory-100 px-1 py-0.5 text-ink-500">@trustrent/blockchain</code>
         .
       </p>
+    </div>
+  );
+}
+
+function PartyCard({ party }: { party: Party }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ivory-100 text-ink-400">
+          <IconUser className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-ink-800">{party.name}</p>
+          <p className="truncate font-mono text-[11px] text-ink-400">{party.address}</p>
+        </div>
+      </div>
+      <ReputationBadge score={getMockReputation(party.address)} />
     </div>
   );
 }
