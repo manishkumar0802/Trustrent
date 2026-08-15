@@ -89,6 +89,8 @@ npm run deploy      # deploy stub (validates env, prints plan)
 - `docs/events.md` — event catalog.
 - `docs/storage.md` — off-chain evidence storage abstraction.
 - `docs/roadmap.md` — phase plan.
+- `docs/pitch.md` — product pitch: problem, roles, workflow, contract
+  architecture, event streaming, frontend, and why Stellar.
 
 ## License
 
