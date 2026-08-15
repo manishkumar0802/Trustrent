@@ -11,7 +11,8 @@
 - Enforce role authorization (`require_auth`) in all contracts
 - Cross-contract calls: rental_agreement ↔ escrow ↔ dispute
 - User registry with roles (Landlord/Tenant/Arbitrator) + reputation;
-  arbitrator decisions are binding and verified against the registry ✅
+  arbitrator decisions are binding and verified against the registry, and
+  settlement outcomes adjust winner/loser reputation ✅
 - Real token transfer in escrow (Stellar Asset Contract) on **testnet**
 - `@stellar/stellar-sdk`-driven `TrustRentClient`; replace mock data
 - Deploy scripts create + initialize contracts; contract IDs → env

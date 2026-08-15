@@ -39,7 +39,7 @@ disabled in tooling and scripts.
 │  ┌────────▼─────────┐  freezes / settles ────┘       │
 │  │     dispute      │  the deposit during a dispute  │
 │  └───────┬──────────┘                                │
-│          │ reads arbitrator role                    │
+│          │ verifies role, writes outcome reputation │
 │  ┌───────▼──────────┐                                │
 │  │   user_registry  │  identity + reputation        │
 │  └──────────────────┘                                │
@@ -67,7 +67,7 @@ Shared code:
 | `rental_agreement` | Orchestrator. Agreement lifecycle (`create → join → … → close`), role-based authorization, move-out and evidence flow, deduction proposal/acceptance, dispute delegation, settlement coordination.                                                                                |
 | `escrow`           | Holds the deposit and controls its release. Tracks locked/released amounts and status. Refuses any withdrawal that is not triggered by the registered agreement or dispute contract.                                                                                              |
 | `dispute`          | Dispute records, dispute evidence, resolution proposal/acceptance, and the settlement split. Assigns the platform arbitrator (verified against the registry); an arbitrator's decision is binding. Never moves funds itself — it instructs escrow, which re-validates everything. |
-| `user_registry`    | Identity directory: wallet → role (Landlord/Tenant/Arbitrator) + admin-managed reputation. Consulted by dispute to verify arbitrators; never touches funds.                                                                                                                       |
+| `user_registry`    | Identity directory: wallet → role (Landlord/Tenant/Arbitrator) + reputation. Consulted by dispute to verify arbitrators, and receives winner/loser reputation updates after settlements. Never touches funds.                                                                     |
 
 No contract can move a deposit on its own:
 
@@ -147,6 +147,9 @@ get_dispute(env, agreement_id: u32) -> Result<DisputeRecord, Error>
 initialize(env, admin: Address)
 register_user(env, admin: Address, user: Address, role: UserRole) -> Result<(), Error>
 set_reputation(env, admin: Address, user: Address, reputation: u32) -> Result<(), Error>
+set_reputation_source(env, admin: Address, source: Address) -> Result<(), Error>
+adjust_reputation(env, caller: Address, user: Address, delta: i32) -> Result<(), Error>
+                                                                    // caller == reputation source
 get_user(env, user: Address) -> Result<UserRecord, Error>
 ```
 
@@ -256,10 +259,11 @@ across contracts.
 
 **`user_registry`**
 
-| Key          | Value                                          |
-| ------------ | ---------------------------------------------- |
-| `Admin`      | `Address`                                      |
-| `User(Addr)` | `UserRecord` — role, reputation, registered_at |
+| Key                | Value                                                        |
+| ------------------ | ------------------------------------------------------------ |
+| `Admin`            | `Address`                                                    |
+| `ReputationSource` | `Address` — the contract allowed to call `adjust_reputation` |
+| `User(Addr)`       | `UserRecord` — role, reputation, registered_at               |
 
 No contract re-stores what another already holds: escrow stores parties because
 it must transfer to them in the next phase; the agreement record remains the
@@ -310,17 +314,18 @@ clients (`#[contractclient]` on `tr_common::escrow_api::EscrowInterface` and
 a contract address is implicitly authorized as the direct invoker — and
 compares it against the addresses registered at `initialize`.
 
-| Call               | Direction                  | Why it exists                                                                                                                                                                                    |
-| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lock_deposit`     | rental_agreement → escrow  | Tenant funding. Escrow accepts only from the registered agreement contract, so a tenant cannot lock a deposit outside the agreement state machine (e.g. after move-out).                         |
-| `release_full`     | rental_agreement → escrow  | Full refund when a clean agreement is closed. Escrow re-validates the caller and that the deposit is not already released / dispute-locked.                                                      |
-| `release_partial`  | rental_agreement → escrow  | Executes the agreed-deduction split the moment the tenant accepts it.                                                                                                                            |
-| `open_dispute`     | rental_agreement → dispute | Delegates dispute records. The agreement contract has already verified the initiator is a party and the state is `INSPECTION_PENDING`.                                                           |
-| `get_dispute`      | rental_agreement → dispute | `close_agreement` reads the dispute record to verify it is truly `Resolved` before allowing the agreement to close.                                                                              |
-| `lock_for_dispute` | dispute → escrow           | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute.                                                                                          |
-| `get_deposit`      | dispute → escrow           | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state.                                        |
-| `settle_dispute`   | dispute → escrow           | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
-| `get_user`         | dispute → user_registry    | `set_arbitrator` verifies the proposed address is registered with the `Arbitrator` role before assignment, so a random wallet cannot act as arbitrator.                                          |
+| Call                | Direction                  | Why it exists                                                                                                                                                                                    |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lock_deposit`      | rental_agreement → escrow  | Tenant funding. Escrow accepts only from the registered agreement contract, so a tenant cannot lock a deposit outside the agreement state machine (e.g. after move-out).                         |
+| `release_full`      | rental_agreement → escrow  | Full refund when a clean agreement is closed. Escrow re-validates the caller and that the deposit is not already released / dispute-locked.                                                      |
+| `release_partial`   | rental_agreement → escrow  | Executes the agreed-deduction split the moment the tenant accepts it.                                                                                                                            |
+| `open_dispute`      | rental_agreement → dispute | Delegates dispute records. The agreement contract has already verified the initiator is a party and the state is `INSPECTION_PENDING`.                                                           |
+| `get_dispute`       | rental_agreement → dispute | `close_agreement` reads the dispute record to verify it is truly `Resolved` before allowing the agreement to close.                                                                              |
+| `lock_for_dispute`  | dispute → escrow           | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute.                                                                                          |
+| `get_deposit`       | dispute → escrow           | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state.                                        |
+| `settle_dispute`    | dispute → escrow           | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
+| `get_user`          | dispute → user_registry    | `set_arbitrator` verifies the proposed address is registered with the `Arbitrator` role before assignment, so a random wallet cannot act as arbitrator.                                          |
+| `adjust_reputation` | dispute → user_registry    | After a settlement, the larger-share party gains reputation and the other loses some (source-gated; best-effort so reputation never blocks settlement).                                          |
 
 Every call changes real state in the callee — there is no decoration.
 

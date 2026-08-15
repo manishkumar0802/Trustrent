@@ -646,7 +646,7 @@
                         "symbol": "reputation"
                       },
                       "val": {
-                        "u32": 100
+                        "u32": 50
                       }
                     },
                     {
@@ -728,7 +728,7 @@
                         "symbol": "reputation"
                       },
                       "val": {
-                        "u32": 100
+                        "u32": 50
                       }
                     },
                     {

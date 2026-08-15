@@ -345,10 +345,10 @@ pub mod dispute_api {
 
 /// Cross-contract interface for the `user_registry` contract.
 ///
-/// Read-only from the dispute contract's perspective: the dispute contract
-/// checks a prospective arbitrator against the registry (`get_user`) before
-/// accepting a binding resolution from them, so the arbitrator role is
-/// enforced by a real registry, not by whoever calls first.
+/// The dispute contract reads the registry (`get_user`) to verify a
+/// prospective arbitrator's role before accepting a binding resolution, and
+/// writes dispute outcomes back (`adjust_reputation`, source-gated to the
+/// dispute contract) so winners gain and losers lose reputation.
 pub mod registry_api {
     use super::*;
 
@@ -368,6 +368,15 @@ pub mod registry_api {
             admin: Address,
             user: Address,
             reputation: u32,
+        ) -> Result<(), Error>;
+
+        fn set_reputation_source(env: Env, admin: Address, source: Address) -> Result<(), Error>;
+
+        fn adjust_reputation(
+            env: Env,
+            caller: Address,
+            user: Address,
+            delta: i32,
         ) -> Result<(), Error>;
 
         fn get_user(env: Env, user: Address) -> Result<UserRecord, Error>;
