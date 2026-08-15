@@ -14,7 +14,9 @@ tr-common = { path = "../common" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-# Integration tests register the real escrow and dispute contracts in the
-# same Env so cross-contract calls execute against real state.
+# Integration tests register the real escrow, dispute and user_registry
+# contracts in the same Env so cross-contract calls execute against real
+# state.
 escrow = { path = "../escrow" }
 dispute = { path = "../dispute" }
+user_registry = { path = "../user_registry" }

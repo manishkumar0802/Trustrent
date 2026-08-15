@@ -75,6 +75,9 @@ export const EVENT_LABELS: Record<ContractEventName, string> = {
   DisputeResolved: "Dispute resolved",
   DepositReleased: "Deposit released",
   AgreementClosed: "Agreement closed",
+  UserRegistered: "User registered",
+  ReputationUpdated: "Reputation updated",
+  ArbitratorAssigned: "Arbitrator assigned",
 };
 
 /* ------------------------------------------------------------------ */
@@ -108,5 +111,7 @@ export function formatTimestamp(iso: string): string {
 
 /** Demo-safe guard: role-aware headline copy. */
 export function roleLabel(role: Role): string {
-  return role === "landlord" ? "Landlord" : "Tenant";
+  if (role === "landlord") return "Landlord";
+  if (role === "arbitrator") return "Arbitrator";
+  return "Tenant";
 }

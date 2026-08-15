@@ -1,5 +1,5 @@
 [package]
-name = "dispute"
+name = "user_registry"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -14,7 +14,3 @@ tr-common = { path = "../common" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-# Integration tests register the real escrow + user_registry contracts in the
-# same Env.
-escrow = { path = "../escrow" }
-user_registry = { path = "../user_registry" }

@@ -1,4 +1,4 @@
-import type { Agreement } from "@trustrent/types";
+import type { Agreement, Role } from "@trustrent/types";
 import { formatINR, shortAddress } from "@trustrent/shared";
 import { Button } from "../ui/button";
 import { DepositStatusBadge } from "../ui/status-badge";
@@ -9,13 +9,7 @@ import { IconLock, IconShield, IconWallet } from "../icons";
  *
  *   SECURITY DEPOSIT  ₹30,000  LOCKED IN ESCROW
  */
-export function DepositHero({
-  agreement,
-  role,
-}: {
-  agreement: Agreement;
-  role: "landlord" | "tenant";
-}) {
+export function DepositHero({ agreement, role }: { agreement: Agreement; role: Role }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
       <div className="flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">

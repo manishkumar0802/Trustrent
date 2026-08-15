@@ -4,8 +4,8 @@
 //! TrustRent Soroban contracts.
 //!
 //! This crate is a plain `rlib` linked into each contract crate so that
-//! `rental_agreement`, `escrow` and `dispute` share a single source of truth
-//! for state machines, records, errors and the event catalog.
+//! `rental_agreement`, `escrow`, `dispute` and `user_registry` share a single
+//! source of truth for state machines, records, errors and the event catalog.
 //!
 //! The `contractclient` traits at the bottom are the CROSS-CONTRACT
 //! interfaces. A calling contract instantiates the generated client against
@@ -115,6 +115,33 @@ pub enum Error {
     AlreadyInitialized = 16,
     /// The same evidence hash has already been recorded for this agreement.
     DuplicateEvidence = 17,
+    /// Registry lookup failed — the address is not registered.
+    UserNotFound = 18,
+    /// `register_user` for an already-registered address.
+    UserAlreadyRegistered = 19,
+    /// An address is being used as an arbitrator but is not registered with
+    /// the `Arbitrator` role.
+    NotAnArbitrator = 20,
+}
+
+/// Role of a user in the registry.
+#[contracttype]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UserRole {
+    Landlord,
+    Tenant,
+    Arbitrator,
+}
+
+/// User record stored by `user_registry`.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UserRecord {
+    pub address: Address,
+    pub role: UserRole,
+    /// Admin-managed reputation score (0..=100).
+    pub reputation: u32,
+    pub registered_at: u64,
 }
 
 /// Core agreement record stored by `rental_agreement`.
@@ -162,6 +189,9 @@ pub struct DisputeRecord {
     pub landlord: Address,
     pub tenant: Address,
     pub initiator: Address,
+    /// Arbitrator assigned to this dispute (from the configured arbitrator;
+    /// `None` before one is set). The arbitrator's resolution is binding.
+    pub arbitrator: Option<Address>,
     pub reason: String,
     pub state: DisputeState,
     /// Accepted resolution split (escrow settle amounts).
@@ -196,6 +226,9 @@ pub mod events {
     pub const DEDUCTION_PROPOSED: &str = "DeductionProposed";
     pub const SETTLEMENT_ACCEPTED: &str = "SettlementAccepted";
     pub const DISPUTE_OPENED: &str = "DisputeOpened";
+    pub const USER_REGISTERED: &str = "UserRegistered";
+    pub const REPUTATION_UPDATED: &str = "ReputationUpdated";
+    pub const ARBITRATOR_ASSIGNED: &str = "ArbitratorAssigned";
     pub const DISPUTE_RESOLVED: &str = "DisputeResolved";
     pub const DEPOSIT_RELEASED: &str = "DepositReleased";
     pub const DEPOSIT_DISPUTED: &str = "DepositDisputed";
@@ -271,7 +304,10 @@ pub mod dispute_api {
             admin: Address,
             agreement_contract: Address,
             escrow_contract: Address,
+            user_registry: Address,
         );
+
+        fn set_arbitrator(env: Env, admin: Address, arbitrator: Address) -> Result<(), Error>;
 
         fn open_dispute(
             env: Env,
@@ -304,6 +340,37 @@ pub mod dispute_api {
         fn resolve_dispute(env: Env, agreement_id: u32, caller: Address) -> Result<(), Error>;
 
         fn get_dispute(env: Env, agreement_id: u32) -> Result<DisputeRecord, Error>;
+    }
+}
+
+/// Cross-contract interface for the `user_registry` contract.
+///
+/// Read-only from the dispute contract's perspective: the dispute contract
+/// checks a prospective arbitrator against the registry (`get_user`) before
+/// accepting a binding resolution from them, so the arbitrator role is
+/// enforced by a real registry, not by whoever calls first.
+pub mod registry_api {
+    use super::*;
+
+    #[contractclient(name = "UserRegistryClient")]
+    pub trait UserRegistryInterface {
+        fn initialize(env: Env, admin: Address);
+
+        fn register_user(
+            env: Env,
+            admin: Address,
+            user: Address,
+            role: UserRole,
+        ) -> Result<(), Error>;
+
+        fn set_reputation(
+            env: Env,
+            admin: Address,
+            user: Address,
+            reputation: u32,
+        ) -> Result<(), Error>;
+
+        fn get_user(env: Env, user: Address) -> Result<UserRecord, Error>;
     }
 }
 
