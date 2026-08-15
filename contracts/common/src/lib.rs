@@ -347,8 +347,10 @@ pub mod dispute_api {
 ///
 /// The dispute contract reads the registry (`get_user`) to verify a
 /// prospective arbitrator's role before accepting a binding resolution, and
-/// writes dispute outcomes back (`adjust_reputation`, source-gated to the
-/// dispute contract) so winners gain and losers lose reputation.
+/// writes dispute outcomes back (`adjust_reputation`, gated to the configured
+/// source set — the dispute and agreement contracts) so winners gain and
+/// losers lose reputation. The agreement contract uses the same entry point
+/// to reward a clean move-out.
 pub mod registry_api {
     use super::*;
 
@@ -371,6 +373,9 @@ pub mod registry_api {
         ) -> Result<(), Error>;
 
         fn set_reputation_source(env: Env, admin: Address, source: Address) -> Result<(), Error>;
+
+        fn remove_reputation_source(env: Env, admin: Address, source: Address)
+            -> Result<(), Error>;
 
         fn adjust_reputation(
             env: Env,

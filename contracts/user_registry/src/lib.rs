@@ -7,17 +7,20 @@
 //! verify an address really is a registered Arbitrator before a binding
 //! resolution is accepted, and — after a dispute settles — the dispute
 //! contract adjusts the winner's/loser's reputation through
-//! `adjust_reputation`, which only the registered reputation source may
-//! call. The registry never moves funds and holds no deposit state — it is
-//! a pure directory, which keeps it cheap and audit-friendly.
+//! `adjust_reputation`. A clean move-out also rewards the tenant: the
+//! rental_agreement contract bumps the tenant's reputation when the full
+//! deposit is refunded. The registry never moves funds and holds no deposit
+//! state — it is a pure directory, which keeps it cheap and audit-friendly.
 //!
 //! Registration and absolute reputation changes are admin-only
 //! (`require_admin`). Delta adjustments (`adjust_reputation`) are restricted
-//! to a single source contract (the dispute contract) configured by the
-//! admin. Reads (`get_user`) are public so any contract or wallet can look a
-//! counterparty up.
+//! to the set of source contracts (the dispute and agreement contracts)
+//! configured by the admin. Reads (`get_user`) are public so any contract
+//! or wallet can look a counterparty up.
 
-use soroban_sdk::{contract, contractimpl, contracttype, panic_with_error, Address, Env, Symbol};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, panic_with_error, vec, Address, Env, Symbol, Vec,
+};
 
 use tr_common::events;
 use tr_common::{Error, UserRecord, UserRole};
@@ -26,9 +29,9 @@ use tr_common::{Error, UserRecord, UserRole};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DataKey {
     Admin,
-    /// The contract allowed to call `adjust_reputation` (the dispute
-    /// contract). Unset until the admin configures it.
-    ReputationSource,
+    /// The contracts allowed to call `adjust_reputation` (the dispute and
+    /// agreement contracts). Empty until the admin configures sources.
+    ReputationSources,
     User(Address),
 }
 
@@ -110,24 +113,58 @@ impl UserRegistryContract {
         Ok(())
     }
 
-    /// Configure the contract allowed to call `adjust_reputation` (the
-    /// dispute contract). Admin-only. Without this, dispute outcomes cannot
-    /// touch reputation.
+    /// Authorize a contract to call `adjust_reputation` (the dispute and
+    /// agreement contracts). Admin-only. Sources accumulate — calling this
+    /// again for another contract adds it to the set. Without a source,
+    /// outcome bookkeeping cannot touch reputation.
     pub fn set_reputation_source(env: Env, admin: Address, source: Address) -> Result<(), Error> {
         admin.require_auth();
         require_admin(&env, &admin)?;
+        let mut sources: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::ReputationSources)
+            .unwrap_or_else(|| vec![&env]);
+        if !sources.contains(&source) {
+            sources.push_back(source);
+        }
         env.storage()
             .persistent()
-            .set(&DataKey::ReputationSource, &source);
+            .set(&DataKey::ReputationSources, &sources);
+        Ok(())
+    }
+
+    /// Revoke a contract's permission to call `adjust_reputation`. Admin-only.
+    pub fn remove_reputation_source(
+        env: Env,
+        admin: Address,
+        source: Address,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        require_admin(&env, &admin)?;
+        let sources: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::ReputationSources)
+            .unwrap_or_else(|| vec![&env]);
+        let mut filtered = vec![&env];
+        for s in sources.iter() {
+            if s != source {
+                filtered.push_back(s);
+            }
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::ReputationSources, &filtered);
         Ok(())
     }
 
     /// Delta-based reputation change, restricted to the configured reputation
-    /// source (the dispute contract after a settlement). `delta` may be
-    /// positive or negative; the result is clamped to 0..=100. Emits
-    /// `ReputationUpdated`. Returns `Error::Unauthorized` if the caller is
-    /// not the configured source, `Error::NotInitialized` if no source has
-    /// been configured yet.
+    /// sources (the dispute contract after a settlement, the agreement
+    /// contract after a clean move-out). `delta` may be positive or negative;
+    /// the result is clamped to 0..=100. Emits `ReputationUpdated`. Returns
+    /// `Error::Unauthorized` if the caller is not a configured source,
+    /// `Error::NotInitialized` if no source has been configured yet.
     pub fn adjust_reputation(
         env: Env,
         caller: Address,
@@ -135,12 +172,17 @@ impl UserRegistryContract {
         delta: i32,
     ) -> Result<(), Error> {
         caller.require_auth();
-        let source: Address = env
+        let sources: Vec<Address> = env
             .storage()
             .persistent()
-            .get(&DataKey::ReputationSource)
+            .get(&DataKey::ReputationSources)
             .ok_or(Error::NotInitialized)?;
-        if caller != source {
+        // An empty set (every source removed) is equivalent to no source
+        // being configured yet.
+        if sources.is_empty() {
+            return Err(Error::NotInitialized);
+        }
+        if !sources.contains(&caller) {
             return Err(Error::Unauthorized);
         }
 
@@ -315,6 +357,57 @@ mod test {
         assert_eq!(
             client
                 .try_set_reputation_source(&stranger, &source)
+                .unwrap_err()
+                .unwrap(),
+            Error::Unauthorized
+        );
+    }
+
+    #[test]
+    fn multiple_sources_can_adjust_and_sources_can_be_removed() {
+        let (env, admin, client) = setup();
+        let user = Address::generate(&env);
+        client.register_user(&admin, &user, &UserRole::Tenant);
+
+        // Two contracts are authorized: the dispute and the agreement
+        // contracts. Both write reputation (settlements vs clean move-outs).
+        let dispute = Address::generate(&env);
+        let agreement = Address::generate(&env);
+        client.set_reputation_source(&admin, &dispute);
+        client.set_reputation_source(&admin, &agreement);
+
+        client.adjust_reputation(&dispute, &user, &10);
+        assert_eq!(client.get_user(&user).reputation, 60);
+        client.adjust_reputation(&agreement, &user, &10);
+        assert_eq!(client.get_user(&user).reputation, 70);
+
+        // Revoking one source blocks it but keeps the other working.
+        client.remove_reputation_source(&admin, &dispute);
+        assert_eq!(
+            client
+                .try_adjust_reputation(&dispute, &user, &10)
+                .unwrap_err()
+                .unwrap(),
+            Error::Unauthorized
+        );
+        client.adjust_reputation(&agreement, &user, &-20);
+        assert_eq!(client.get_user(&user).reputation, 50);
+
+        // Removing the last source resets to NotInitialized.
+        client.remove_reputation_source(&admin, &agreement);
+        assert_eq!(
+            client
+                .try_adjust_reputation(&agreement, &user, &10)
+                .unwrap_err()
+                .unwrap(),
+            Error::NotInitialized
+        );
+
+        // Only the admin can remove a source.
+        let stranger = Address::generate(&env);
+        assert_eq!(
+            client
+                .try_remove_reputation_source(&stranger, &agreement)
                 .unwrap_err()
                 .unwrap(),
             Error::Unauthorized

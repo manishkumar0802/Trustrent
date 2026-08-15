@@ -8,18 +8,20 @@ shares types/event names through the `tr-common` crate.
 
 Owns the agreement lifecycle and orchestrates the move-out flow.
 
-| Function                                                              | Effect                                                                                                                |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `create(landlord, property_ref, rent, deposit) -> u32`                | New agreement, state `Created`. Emits `AgreementCreated`.                                                             |
-| `join(agreement_id, tenant)`                                          | `Created → Active`. Emits `TenantJoined`.                                                                             |
-| `lock_deposit(agreement_id)`                                          | Orchestration seam → escrow in phase 2. Emits `DepositLocked`.                                                        |
-| `request_move_out(agreement_id)`                                      | `Active → MoveOutRequested`. Emits `MoveOutRequested`.                                                                |
-| `submit_evidence(agreement_id, submitter, kind, content_hash) -> u32` | Stores an evidence reference; first evidence moves `MoveOutRequested → EvidenceSubmitted`. Emits `EvidenceSubmitted`. |
-| `start_inspection(agreement_id)`                                      | `EvidenceSubmitted → InspectionPending`.                                                                              |
-| `approve(agreement_id)`                                               | `InspectionPending → Approved`. Emits `InspectionApproved`.                                                           |
-| `get_agreement / state / get_evidence`                                | Read helpers.                                                                                                         |
+| Function                                                              | Effect                                                                                                                                         |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create(landlord, property_ref, rent, deposit) -> u32`                | New agreement, state `Created`. Emits `AgreementCreated`.                                                                                      |
+| `join(agreement_id, tenant)`                                          | `Created → Active`. Emits `TenantJoined`.                                                                                                      |
+| `lock_deposit(agreement_id)`                                          | Orchestration seam → escrow in phase 2. Emits `DepositLocked`.                                                                                 |
+| `request_move_out(agreement_id)`                                      | `Active → MoveOutRequested`. Emits `MoveOutRequested`.                                                                                         |
+| `submit_evidence(agreement_id, submitter, kind, content_hash) -> u32` | Stores an evidence reference; first evidence moves `MoveOutRequested → EvidenceSubmitted`. Emits `EvidenceSubmitted`.                          |
+| `start_inspection(agreement_id)`                                      | `EvidenceSubmitted → InspectionPending`.                                                                                                       |
+| `approve(agreement_id)`                                               | `InspectionPending → Approved`. Emits `InspectionApproved`.                                                                                    |
+| `close(agreement_id)`                                                 | Closes the agreement; on the full-refund path (clean move-out) also rewards the tenant in the registry (best-effort). Emits `AgreementClosed`. |
+| `get_agreement / state / get_evidence`                                | Read helpers.                                                                                                                                  |
 
-Storage keys: `Counter`, `EvidenceCounter`, `Agreement(u32)`, `Evidence(u32)`.
+Storage keys: `Counter`, `EvidenceCounter`, `Agreement(u32)`, `Evidence(u32)`, plus
+`EscrowContract`, `DisputeContract`, `UserRegistry` (wiring).
 
 ## escrow (`contracts/escrow`)
 
@@ -53,22 +55,25 @@ Storage keys: `Dispute(u32)`.
 ## user_registry (`contracts/user_registry`)
 
 The platform identity directory: wallet address → role (Landlord / Tenant /
-Arbitrator) plus a reputation score (0..=100, neutral baseline 50). The
-dispute contract reads it to verify an arbitrator before assignment, so a
-random wallet cannot pose as one, and writes settlement outcomes back: the
-larger-share party gains reputation, the other loses some. The registry
-never moves funds.
+Arbitrator) plus a reputation score (0..=100, neutral baseline 50). Two
+contracts write outcomes back through `adjust_reputation`: the dispute
+contract (the larger-share party of a settlement gains reputation, the other
+loses some) and the rental agreement contract (the tenant gains reputation
+after a clean move-out — a full refund). The dispute contract also reads it
+to verify an arbitrator before assignment, so a random wallet cannot pose as
+one. The registry never moves funds.
 
-| Function                                 | Effect                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| `initialize(admin)`                      | One-time setup.                                                                         |
-| `register_user(admin, user, role)`       | Registers a user with a role (starts at neutral reputation 50). Emits `UserRegistered`. |
-| `set_reputation(admin, user, score)`     | Absolute reputation update (clamped 0..=100). Emits `ReputationUpdated`.                |
-| `set_reputation_source(admin, source)`   | Authorizes a contract (the dispute contract) to call `adjust_reputation`.               |
-| `adjust_reputation(caller, user, delta)` | Delta reputation change, source-gated; clamped 0..=100. Emits `ReputationUpdated`.      |
-| `get_user(user)`                         | Public read helper.                                                                     |
+| Function                                  | Effect                                                                                  |
+| ----------------------------------------- | --------------------------------------------------------------------------------------- |
+| `initialize(admin)`                       | One-time setup.                                                                         |
+| `register_user(admin, user, role)`        | Registers a user with a role (starts at neutral reputation 50). Emits `UserRegistered`. |
+| `set_reputation(admin, user, score)`      | Absolute reputation update (clamped 0..=100). Emits `ReputationUpdated`.                |
+| `set_reputation_source(admin, source)`    | Authorizes a contract (dispute / agreement) to call `adjust_reputation`. Additive.      |
+| `remove_reputation_source(admin, source)` | Revokes a contract's permission to call `adjust_reputation`.                            |
+| `adjust_reputation(caller, user, delta)`  | Delta reputation change, source-gated; clamped 0..=100. Emits `ReputationUpdated`.      |
+| `get_user(user)`                          | Public read helper.                                                                     |
 
-Storage keys: `Admin`, `ReputationSource`, `User(Address)`.
+Storage keys: `Admin`, `ReputationSources` (`Vec<Address>`), `User(Address)`.
 
 ## Cross-contract plan (phase 2)
 
