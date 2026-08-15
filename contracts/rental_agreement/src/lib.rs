@@ -11,6 +11,8 @@
 //!   (full refund on close), `release_partial` (agreed deduction split).
 //! - RentalAgreement → Dispute: `open_dispute` (delegates dispute records),
 //!   `get_dispute` (verifies resolution before closing).
+//! - RentalAgreement → UserRegistry: `adjust_reputation` — a clean move-out
+//!   (full refund) rewards the tenant.
 //! - Dispute → Escrow (see the dispute contract): freezes and settles the
 //!   deposit — the escrow contract validates the caller on every call.
 //!
@@ -27,6 +29,7 @@ use soroban_sdk::{
 use tr_common::dispute_api::DisputeClient;
 use tr_common::escrow_api::EscrowClient;
 use tr_common::events;
+use tr_common::registry_api::UserRegistryClient;
 use tr_common::{
     AgreementRecord, AgreementState, DisputeState, Error, EvidenceRecord, EvidenceType,
     TryClientResult,
@@ -38,6 +41,7 @@ pub enum DataKey {
     Admin,
     EscrowContract,
     DisputeContract,
+    UserRegistry,
     Counter,
     EvidenceCounter,
     Agreement(u32),
@@ -51,12 +55,14 @@ pub struct AgreementContract;
 #[contractimpl]
 impl AgreementContract {
     /// One-time setup: the addresses of the escrow and dispute contracts this
-    /// agreement contract orchestrates.
+    /// agreement contract orchestrates, plus the user registry it reports
+    /// clean move-outs to.
     pub fn initialize(
         env: Env,
         admin: Address,
         escrow_contract: Address,
         dispute_contract: Address,
+        user_registry: Address,
     ) {
         admin.require_auth();
         if env.storage().persistent().has(&DataKey::Admin) {
@@ -69,6 +75,9 @@ impl AgreementContract {
         env.storage()
             .persistent()
             .set(&DataKey::DisputeContract, &dispute_contract);
+        env.storage()
+            .persistent()
+            .set(&DataKey::UserRegistry, &user_registry);
     }
 
     /// Landlord creates the agreement. `tenant` (optional) is the invited
@@ -474,6 +483,9 @@ impl AgreementContract {
                 EscrowClient::new(&env, &escrow_contract)
                     .try_release_full(&agreement_id, &caller_addr)
                     .into_result()?;
+                // The full refund means a clean move-out — reward the tenant.
+                // Best-effort: reputation bookkeeping never blocks the refund.
+                apply_clean_move_out_reputation(&env, &record);
                 record.settled = true;
                 record.state = AgreementState::Closed;
                 env.storage()
@@ -547,6 +559,43 @@ fn require_party(record: &AgreementRecord, who: &Address) -> Result<(), Error> {
     }
 }
 
+/// How many reputation points a tenant gains for a clean move-out (full
+/// refund). Matches the dispute-win reward so the two positive signals are
+/// consistent.
+const CLEAN_MOVE_OUT_REPUTATION_DELTA: i32 = 10;
+
+/// Best-effort reputation update after a clean move-out
+/// (RentalAgreement → UserRegistry). The tenant earns reputation when the
+/// full deposit is refunded.
+///
+/// Failures are deliberately non-fatal: the refund is the critical path and
+/// must not depend on reputation bookkeeping. A tenant that is not registered
+/// (`UserNotFound`), a registry with no reputation source configured
+/// (`NotInitialized`), or a caller mismatch (`Unauthorized`) are all skipped;
+/// any other error is treated as a hard failure of the close.
+fn apply_clean_move_out_reputation(env: &Env, record: &AgreementRecord) {
+    let Some(tenant) = record.tenant.as_ref() else {
+        return;
+    };
+    let registry: Address = match env.storage().persistent().get(&DataKey::UserRegistry) {
+        Some(registry) => registry,
+        None => return,
+    };
+    let caller = env.current_contract_address();
+    let client = UserRegistryClient::new(env, &registry);
+
+    match client
+        .try_adjust_reputation(&caller, tenant, &CLEAN_MOVE_OUT_REPUTATION_DELTA)
+        .into_result()
+    {
+        Ok(()) => {}
+        // Not applicable — skip quietly; the refund already happened.
+        Err(Error::UserNotFound | Error::NotInitialized | Error::Unauthorized) => {}
+        // Any other error is a genuine failure — surface it.
+        Err(e) => panic_with_error!(env, e),
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -559,7 +608,7 @@ mod test {
     use escrow::EscrowContract;
     use tr_common::escrow_api::EscrowClient;
     use tr_common::registry_api::UserRegistryClient;
-    use tr_common::{DepositStatus, DisputeState};
+    use tr_common::{DepositStatus, DisputeState, UserRole};
     use user_registry::UserRegistryContract;
 
     const RENT: i128 = 18_000_000_000;
@@ -570,6 +619,8 @@ mod test {
         agreement: AgreementContractClient<'static>,
         escrow: EscrowClient<'static>,
         dispute: DisputeClient<'static>,
+        registry: UserRegistryClient<'static>,
+        admin: Address,
         landlord: Address,
         tenant: Address,
     }
@@ -592,13 +643,19 @@ mod test {
         // same Soroban host state as `env` returned in the harness.
         let client_env: &'static Env = Box::leak(Box::new(env.clone()));
 
+        let registry = UserRegistryClient::new(client_env, &registry_id);
+        registry.initialize(&admin);
         EscrowClient::new(client_env, &escrow_id).initialize(&admin, &agreement_id, &dispute_id);
-        UserRegistryClient::new(client_env, &registry_id).initialize(&admin);
         let dispute = DisputeClient::new(client_env, &dispute_id);
         dispute.initialize(&admin, &agreement_id, &escrow_id, &registry_id);
 
         let agreement = AgreementContractClient::new(client_env, &agreement_id);
-        agreement.initialize(&admin, &escrow_id, &dispute_id);
+        agreement.initialize(&admin, &escrow_id, &dispute_id, &registry_id);
+
+        // Both outcome writers are authorized reputation sources: the dispute
+        // contract (settlements) and this agreement contract (clean move-outs).
+        registry.set_reputation_source(&admin, &dispute_id);
+        registry.set_reputation_source(&admin, &agreement_id);
 
         let landlord = Address::generate(&env);
         let tenant = Address::generate(&env);
@@ -608,6 +665,8 @@ mod test {
             agreement,
             escrow: EscrowClient::new(client_env, &escrow_id),
             dispute,
+            registry,
+            admin,
             landlord,
             tenant,
         }
@@ -822,6 +881,42 @@ mod test {
         let deposit = h.escrow.get_deposit(&id);
         assert_eq!(deposit.status, DepositStatus::Released);
         assert_eq!(deposit.released, DEPOSIT);
+    }
+
+    #[test]
+    fn clean_move_out_boosts_tenant_reputation() {
+        let h = setup();
+        // Register both parties so reputation bookkeeping applies. Unregistered
+        // parties are skipped quietly (best-effort by design).
+        h.registry
+            .register_user(&h.admin, &h.tenant, &UserRole::Tenant);
+        h.registry
+            .register_user(&h.admin, &h.landlord, &UserRole::Landlord);
+
+        let id = to_inspection_pending(&h); // state INSPECTION_PENDING
+        h.agreement.approve_inspection(&id, &h.landlord); // → APPROVED
+        assert_eq!(
+            h.agreement.get_agreement(&id).state,
+            AgreementState::Approved
+        );
+
+        // Close = full refund = clean move-out. The tenant's reputation rises
+        // from the neutral baseline 50 to 60.
+        h.agreement.close_agreement(&id, &h.landlord);
+        assert_eq!(h.registry.get_user(&h.tenant).reputation, 60);
+        // The landlord is untouched by a clean move-out.
+        assert_eq!(h.registry.get_user(&h.landlord).reputation, 50);
+    }
+
+    #[test]
+    fn clean_move_out_skips_unregistered_tenant_quietly() {
+        let h = setup();
+        // Tenant never registered — the close must still succeed.
+        let id = to_inspection_pending(&h); // state INSPECTION_PENDING
+        h.agreement.approve_inspection(&id, &h.landlord); // → APPROVED
+
+        h.agreement.close_agreement(&id, &h.landlord);
+        assert_eq!(h.agreement.get_agreement(&id).state, AgreementState::Closed);
     }
 
     #[test]

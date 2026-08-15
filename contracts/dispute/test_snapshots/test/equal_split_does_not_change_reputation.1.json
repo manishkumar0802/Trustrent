@@ -1009,7 +1009,7 @@
             "key": {
               "vec": [
                 {
-                  "symbol": "ReputationSource"
+                  "symbol": "ReputationSources"
                 }
               ]
             },
@@ -1026,13 +1026,17 @@
                 "key": {
                   "vec": [
                     {
-                      "symbol": "ReputationSource"
+                      "symbol": "ReputationSources"
                     }
                   ]
                 },
                 "durability": "persistent",
                 "val": {
-                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                  "vec": [
+                    {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
+                    }
+                  ]
                 }
               }
             },
