@@ -58,11 +58,11 @@ Shared code:
 
 ## 2. Contract responsibilities
 
-| Contract | Responsibility |
-| --- | --- |
+| Contract           | Responsibility                                                                                                                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `rental_agreement` | Orchestrator. Agreement lifecycle (`create → join → … → close`), role-based authorization, move-out and evidence flow, deduction proposal/acceptance, dispute delegation, settlement coordination. |
-| `escrow` | Holds the deposit and controls its release. Tracks locked/released amounts and status. Refuses any withdrawal that is not triggered by the registered agreement or dispute contract. |
-| `dispute` | Dispute records, dispute evidence, resolution proposal/acceptance, and the settlement split. Never moves funds itself — it instructs escrow, which re-validates everything. |
+| `escrow`           | Holds the deposit and controls its release. Tracks locked/released amounts and status. Refuses any withdrawal that is not triggered by the registered agreement or dispute contract.               |
+| `dispute`          | Dispute records, dispute evidence, resolution proposal/acceptance, and the settlement split. Never moves funds itself — it instructs escrow, which re-validates everything.                        |
 
 No contract can move a deposit on its own:
 
@@ -207,32 +207,32 @@ across contracts.
 
 **`rental_agreement`**
 
-| Key | Value |
-| --- | --- |
-| `Admin` | `Address` |
-| `EscrowContract`, `DisputeContract` | `Address` (wiring) |
-| `Counter` | `u32` (agreement id sequence) |
-| `EvidenceCounter` | `u32` |
-| `Agreement(u32)` | `AgreementRecord` — parties, rent/deposit amounts, state, `settled` flag, pending deduction |
-| `Evidence(u32)` | `EvidenceRecord` — reference only |
+| Key                                 | Value                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| `Admin`                             | `Address`                                                                                   |
+| `EscrowContract`, `DisputeContract` | `Address` (wiring)                                                                          |
+| `Counter`                           | `u32` (agreement id sequence)                                                               |
+| `EvidenceCounter`                   | `u32`                                                                                       |
+| `Agreement(u32)`                    | `AgreementRecord` — parties, rent/deposit amounts, state, `settled` flag, pending deduction |
+| `Evidence(u32)`                     | `EvidenceRecord` — reference only                                                           |
 
 **`escrow`**
 
-| Key | Value |
-| --- | --- |
-| `Admin` | `Address` |
-| `AgreementContract`, `DisputeContract` | `Address` (authorized callers) |
-| `Deposit(u32)` | `DepositRecord` — tenant, landlord, amount, `released`, status, `locked_at` |
+| Key                                    | Value                                                                       |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| `Admin`                                | `Address`                                                                   |
+| `AgreementContract`, `DisputeContract` | `Address` (authorized callers)                                              |
+| `Deposit(u32)`                         | `DepositRecord` — tenant, landlord, amount, `released`, status, `locked_at` |
 
 **`dispute`**
 
-| Key | Value |
-| --- | --- |
-| `Admin` | `Address` |
-| `AgreementContract`, `EscrowContract` | `Address` (wiring) |
-| `EvidenceCounter` | `u32` |
-| `Dispute(u32)` | `DisputeRecord` — initiator, parties, reason, state, accepted split, timestamps |
-| `Evidence(u32)` | `EvidenceRecord` |
+| Key                                   | Value                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `Admin`                               | `Address`                                                                       |
+| `AgreementContract`, `EscrowContract` | `Address` (wiring)                                                              |
+| `EvidenceCounter`                     | `u32`                                                                           |
+| `Dispute(u32)`                        | `DisputeRecord` — initiator, parties, reason, state, accepted split, timestamps |
+| `Evidence(u32)`                       | `EvidenceRecord`                                                                |
 
 No contract re-stores what another already holds: escrow stores parties because
 it must transfer to them in the next phase; the agreement record remains the
@@ -251,8 +251,8 @@ resolution split.
 via a `StorageProvider` abstraction (`local` now; IPFS/Arweave/S3 candidates,
 chosen through the Gravity Index).
 
-The UI always makes this explicit: *the blockchain stores the proof, not the
-file.* Evidence `content_hash` values are content-addressed (CIDs) so
+The UI always makes this explicit: _the blockchain stores the proof, not the
+file._ Evidence `content_hash` values are content-addressed (CIDs) so
 tampering is detectable.
 
 ---
@@ -283,16 +283,16 @@ clients (`#[contractclient]` on `tr_common::escrow_api::EscrowInterface` and
 a contract address is implicitly authorized as the direct invoker — and
 compares it against the addresses registered at `initialize`.
 
-| Call | Direction | Why it exists |
-| --- | --- | --- |
-| `lock_deposit` | rental_agreement → escrow | Tenant funding. Escrow accepts only from the registered agreement contract, so a tenant cannot lock a deposit outside the agreement state machine (e.g. after move-out). |
-| `release_full` | rental_agreement → escrow | Full refund when a clean agreement is closed. Escrow re-validates the caller and that the deposit is not already released / dispute-locked. |
-| `release_partial` | rental_agreement → escrow | Executes the agreed-deduction split the moment the tenant accepts it. |
-| `open_dispute` | rental_agreement → dispute | Delegates dispute records. The agreement contract has already verified the initiator is a party and the state is `INSPECTION_PENDING`. |
-| `get_dispute` | rental_agreement → dispute | `close_agreement` reads the dispute record to verify it is truly `Resolved` before allowing the agreement to close. |
-| `lock_for_dispute` | dispute → escrow | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute. |
-| `get_deposit` | dispute → escrow | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state. |
-| `settle_dispute` | dispute → escrow | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
+| Call               | Direction                  | Why it exists                                                                                                                                                                                    |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lock_deposit`     | rental_agreement → escrow  | Tenant funding. Escrow accepts only from the registered agreement contract, so a tenant cannot lock a deposit outside the agreement state machine (e.g. after move-out).                         |
+| `release_full`     | rental_agreement → escrow  | Full refund when a clean agreement is closed. Escrow re-validates the caller and that the deposit is not already released / dispute-locked.                                                      |
+| `release_partial`  | rental_agreement → escrow  | Executes the agreed-deduction split the moment the tenant accepts it.                                                                                                                            |
+| `open_dispute`     | rental_agreement → dispute | Delegates dispute records. The agreement contract has already verified the initiator is a party and the state is `INSPECTION_PENDING`.                                                           |
+| `get_dispute`      | rental_agreement → dispute | `close_agreement` reads the dispute record to verify it is truly `Resolved` before allowing the agreement to close.                                                                              |
+| `lock_for_dispute` | dispute → escrow           | Freezes the deposit the instant a dispute opens — the deposit lock is preserved for the entire dispute.                                                                                          |
+| `get_deposit`      | dispute → escrow           | Bounds the landlord's proposed resolution split — a proposal exceeding what escrow holds is rejected, so a dispute can never reach an unresolvable state.                                        |
+| `settle_dispute`   | dispute → escrow           | Executes the accepted resolution split. Escrow validates the caller (dispute contract only) and its own state (dispute-locked), so a buggy dispute contract still cannot move funds arbitrarily. |
 
 Every call changes real state in the callee — there is no decoration.
 
@@ -351,7 +351,7 @@ build).
 - **Escrow neutrality** — the contract, not either party, controls funds; no
   party can withdraw unilaterally (verified by tests).
 - **Defense in depth on settlement** — dispute → escrow, and agreement →
-  escrow, are both caller-checked *and* state-checked in escrow (dispute-lock
+  escrow, are both caller-checked _and_ state-checked in escrow (dispute-lock
   required, released/double-settle rejected).
 - **Evidence integrity** — content-addressed hashes make tampering detectable;
   files never enter the ledger.

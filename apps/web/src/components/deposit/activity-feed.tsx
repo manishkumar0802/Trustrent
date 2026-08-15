@@ -49,7 +49,10 @@ export function ActivityFeed({ events }: { events: ContractEvent[] }) {
         return (
           <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">
             {i < events.length - 1 ? (
-              <span aria-hidden className="absolute left-[13px] top-8 h-[calc(100%-1.75rem)] w-px bg-border" />
+              <span
+                aria-hidden
+                className="absolute left-[13px] top-8 h-[calc(100%-1.75rem)] w-px bg-border"
+              />
             ) : null}
             <span
               className={cn(
@@ -62,7 +65,8 @@ export function ActivityFeed({ events }: { events: ContractEvent[] }) {
             <div className="min-w-0 pt-0.5">
               <p className="text-sm font-medium text-ink-800">{EVENT_LABELS[event.name]}</p>
               <p className="mt-0.5 text-xs text-ink-400">
-                {event.actor === "tenant" ? "Tenant" : "Landlord"} · {formatTimestamp(event.timestamp)}
+                {event.actor === "tenant" ? "Tenant" : "Landlord"} ·{" "}
+                {formatTimestamp(event.timestamp)}
               </p>
             </div>
           </li>
@@ -74,7 +78,16 @@ export function ActivityFeed({ events }: { events: ContractEvent[] }) {
 
 function IconUser({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
     </svg>

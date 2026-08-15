@@ -411,12 +411,7 @@ mod test {
         assert_eq!(deposit.status, DepositStatus::Locked);
 
         // Release the remainder — status becomes Released.
-        client.release_partial(
-            &1u32,
-            &20_000_000_000i128,
-            &10_000_000_000i128,
-            &agreement,
-        );
+        client.release_partial(&1u32, &20_000_000_000i128, &10_000_000_000i128, &agreement);
         let deposit = client.get_deposit(&1u32);
         assert_eq!(deposit.released, 30_000_000_000i128);
         assert_eq!(deposit.released_to_tenant, 20_000_000_000i128);

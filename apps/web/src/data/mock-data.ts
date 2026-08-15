@@ -7,7 +7,6 @@ import type { Agreement, ContractEvent } from "@trustrent/types";
  * Delete when TrustRentClient is wired in phase 2.
  */
 
-
 export const ESCROW_CONTRACT_ID = "CCQJZ6MOVE3UPPERESCROWDEMO000001";
 
 export const MOCK_AGREEMENTS: Agreement[] = [
@@ -72,7 +71,10 @@ export const MOCK_AGREEMENTS: Agreement[] = [
           submitter: "tenant",
           kind: "FINAL_DUES",
           contentHash: "QmZ9f3kXp1vR8tW2cAbD5eFgHiJkLmNoPqRsTuVwXyZ",
-          storage: { provider: "ipfs", uri: "ipfs://QmZ9f3kXp1vR8tW2cAbD5eFgHiJkLmNoPqRsTuVwXyZ" },
+          storage: {
+            provider: "ipfs",
+            uri: "ipfs://QmZ9f3kXp1vR8tW2cAbD5eFgHiJkLmNoPqRsTuVwXyZ",
+          },
           submittedAt: "2026-07-21T09:00:00.000Z",
         },
         {
@@ -81,7 +83,10 @@ export const MOCK_AGREEMENTS: Agreement[] = [
           submitter: "tenant",
           kind: "ROOM_CONDITION",
           contentHash: "QmW2dR4yT7uI9oP2aS5dF8gH1jK4lM7nQ0rT3uV6wX",
-          storage: { provider: "ipfs", uri: "ipfs://QmW2dR4yT7uI9oP2aS5dF8gH1jK4lM7nQ0rT3uV6wX" },
+          storage: {
+            provider: "ipfs",
+            uri: "ipfs://QmW2dR4yT7uI9oP2aS5dF8gH1jK4lM7nQ0rT3uV6wX",
+          },
           submittedAt: "2026-07-21T09:05:00.000Z",
         },
       ],

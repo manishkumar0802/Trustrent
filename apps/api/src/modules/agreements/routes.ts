@@ -15,6 +15,9 @@ export async function agreementRoutes(
     if (!agreement) {
       return reply.code(404).send({ error: "not_found", message: "Agreement not found" });
     }
-    return reply.send({ data: agreement, meta: { source: "mock", phase: 1 } });
+    return reply.send({
+      data: agreement,
+      meta: { source: "mock", phase: 1 },
+    });
   });
 }

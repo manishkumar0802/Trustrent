@@ -49,10 +49,7 @@ export default function AgreementDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader
-            title="Move-out evidence"
-            subtitle="References only — files live off-chain"
-          />
+          <CardHeader title="Move-out evidence" subtitle="References only — files live off-chain" />
           <CardBody>
             <EvidencePanel evidence={evidence} />
           </CardBody>
@@ -68,7 +65,8 @@ export default function AgreementDetailPage() {
 
       <p className="text-center text-xs text-ink-300">
         Phase 1 scaffold — this page renders mock data. On-chain reads land in phase 2 via{" "}
-        <code className="rounded bg-ivory-100 px-1 py-0.5 text-ink-500">@trustrent/blockchain</code>.
+        <code className="rounded bg-ivory-100 px-1 py-0.5 text-ink-500">@trustrent/blockchain</code>
+        .
       </p>
     </div>
   );

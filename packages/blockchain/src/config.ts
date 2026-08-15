@@ -46,10 +46,7 @@ export function getNetworkConfig(): NetworkConfig {
 
   return {
     ...base,
-    rpcUrl:
-      readEnv("SOROBAN_RPC_URL") ??
-      readEnv("NEXT_PUBLIC_SOROBAN_RPC_URL") ??
-      base.rpcUrl,
+    rpcUrl: readEnv("SOROBAN_RPC_URL") ?? readEnv("NEXT_PUBLIC_SOROBAN_RPC_URL") ?? base.rpcUrl,
     networkPassphrase:
       readEnv("SOROBAN_NETWORK_PASSPHRASE") ??
       readEnv("NEXT_PUBLIC_NETWORK_PASSPHRASE") ??

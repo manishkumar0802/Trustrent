@@ -30,7 +30,10 @@ describe("trustrent-api", () => {
   });
 
   it("returns 404 for unknown agreements", async () => {
-    const res = await app.inject({ method: "GET", url: "/api/agreements/AG-0000" });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/agreements/AG-0000",
+    });
     expect(res.statusCode).toBe(404);
   });
 });

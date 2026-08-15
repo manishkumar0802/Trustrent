@@ -22,9 +22,21 @@ export default function DisputesPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <ExplainCard n="1" title="Deposit stays locked" text="While a dispute is open, the escrow contract releases nothing to either side." />
-        <ExplainCard n="2" title="Both sides submit evidence" text="References to off-chain files are recorded on-chain with submitter and timestamp." />
-        <ExplainCard n="3" title="Resolution releases funds" text="Agreed deduction splits the deposit; amounts are released by the contract, not by hand." />
+        <ExplainCard
+          n="1"
+          title="Deposit stays locked"
+          text="While a dispute is open, the escrow contract releases nothing to either side."
+        />
+        <ExplainCard
+          n="2"
+          title="Both sides submit evidence"
+          text="References to off-chain files are recorded on-chain with submitter and timestamp."
+        />
+        <ExplainCard
+          n="3"
+          title="Resolution releases funds"
+          text="Agreed deduction splits the deposit; amounts are released by the contract, not by hand."
+        />
       </div>
 
       <Card>

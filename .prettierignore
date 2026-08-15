@@ -13,31 +13,19 @@ build/
 coverage/
 test-results/
 playwright-report/
-blob-report/
 
 # Environment files and local secrets
 .env
 .env.*
-!.env.example
-!.env.*.example
+
+# Lockfiles — never reformat
+package-lock.json
+pnpm-lock.yaml
 
 # Rust build artifacts
 target/
-
-# Logs and temporary files
-*.log
-logs/
-tmp/
-temp/
-*.tmp
-
-# Local tooling and operating-system files
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Stray local cargo target dirs
 .cargo-target-*/
+
+# Contracts — cargo fmt owns Rust formatting, and wasm output is binary
+contracts/
+*.wasm

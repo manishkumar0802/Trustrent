@@ -41,7 +41,9 @@ export default function DashboardPage() {
             <p className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
               {formatINR(primary.deposit.value)}
             </p>
-            <p className="mt-1 text-sm text-forest-100/80">Security deposit · {primary.property.name}</p>
+            <p className="mt-1 text-sm text-forest-100/80">
+              Security deposit · {primary.property.name}
+            </p>
           </div>
           <span className="inline-flex items-center gap-1 text-sm font-medium text-forest-100 transition-transform group-hover:translate-x-0.5">
             View agreement <IconChevronRight className="size-4" />
@@ -72,7 +74,9 @@ export default function DashboardPage() {
                 className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:border-ink-300 hover:bg-ivory-50"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink-800">{agreement.property.name}</p>
+                  <p className="truncate text-sm font-medium text-ink-800">
+                    {agreement.property.name}
+                  </p>
                   <p className="text-xs text-ink-400">
                     {agreement.id} · {formatINR(agreement.deposit.value)} deposit
                   </p>

@@ -47,10 +47,7 @@ export function Stepper({
             {i < steps.length - 1 ? (
               <span
                 aria-hidden
-                className={cn(
-                  "h-px flex-1",
-                  i < current ? "bg-forest-700" : "bg-border",
-                )}
+                className={cn("h-px flex-1", i < current ? "bg-forest-700" : "bg-border")}
               />
             ) : null}
           </li>

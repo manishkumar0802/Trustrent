@@ -28,8 +28,7 @@ export async function buildServer() {
   return app;
 }
 
-const isMain =
-  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMain) {
   const app = await buildServer();
