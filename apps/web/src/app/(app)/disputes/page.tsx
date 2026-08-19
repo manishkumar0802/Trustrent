@@ -172,89 +172,97 @@ function DisputeCard({
         )}
       </div>
 
+      {/* ── Footer with expand + view details ── */}
+      <div className="mt-3 flex items-center justify-between">
+        <div>
+          {!isResolved && dispute.proposedDeduction && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-xs font-medium text-forest-700 hover:text-forest-800"
+            >
+              {expanded ? "Hide details" : "Show details"}
+            </button>
+          )}
+        </div>
+        <Link href={`/disputes/${dispute.id}`}>
+          <Button variant="secondary" size="sm">
+            View details <IconChevronRight className="size-3.5" />
+          </Button>
+        </Link>
+      </div>
+
       {/* ── Expandable detail with actions ── */}
-      {!isResolved && dispute.proposedDeduction && (
-        <>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="mt-3 text-xs font-medium text-forest-700 hover:text-forest-800"
-          >
-            {expanded ? "Hide details" : "Show details"}
-          </button>
-
-          {expanded && (
-            <div className="mt-3 space-y-3 rounded-lg border border-border bg-ivory-50/60 p-4 text-sm">
-              {/* Breakdown */}
-              <div>
-                <p className="text-xs font-medium text-ink-400 mb-1.5">
-                  Breakdown
-                </p>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-ink-600">Tenant refund</span>
-                    <span className="font-medium text-ink-900">
-                      {formatINR(deposit - dispute.proposedDeduction.value)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-ink-600">Landlord receives</span>
-                    <span className="font-medium text-ink-900">
-                      {formatINR(dispute.proposedDeduction.value)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-t border-border pt-1 mt-1">
-                    <span className="text-ink-600">Deposit locked</span>
-                    <span className="font-medium text-amber-600">
-                      {formatINR(deposit)}
-                    </span>
-                  </div>
-                </div>
+      {expanded && !isResolved && dispute.proposedDeduction && (
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-ivory-50/60 p-4 text-sm">
+          {/* Breakdown */}
+          <div>
+            <p className="text-xs font-medium text-ink-400 mb-1.5">
+              Breakdown
+            </p>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="text-ink-600">Tenant refund</span>
+                <span className="font-medium text-ink-900">
+                  {formatINR(deposit - dispute.proposedDeduction.value)}
+                </span>
               </div>
-
-              {/* Status hint */}
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                {isOpened && !dispute.arbitrator && (
-                  <>
-                    <span className="font-semibold">Action needed:</span> Assign
-                    an arbitrator to review the dispute.
-                  </>
-                )}
-                {isUnderReview && (
-                  <>
-                    <span className="font-semibold">In progress:</span> The
-                    arbitrator is reviewing evidence from both sides.
-                  </>
-                )}
+              <div className="flex justify-between">
+                <span className="text-ink-600">Landlord receives</span>
+                <span className="font-medium text-ink-900">
+                  {formatINR(dispute.proposedDeduction.value)}
+                </span>
               </div>
+              <div className="flex justify-between border-t border-border pt-1 mt-1">
+                <span className="text-ink-600">Deposit locked</span>
+                <span className="font-medium text-amber-600">
+                  {formatINR(deposit)}
+                </span>
+              </div>
+            </div>
+          </div>
 
-              {/* Actions */}
-              {isOpened && !dispute.arbitrator && (
-                <div className="flex justify-end">
-                  <Button size="sm" onClick={handleAssignArbitrator}>
-                    Assign arbitrator
-                  </Button>
-                </div>
-              )}
+          {/* Status hint */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            {isOpened && !dispute.arbitrator && (
+              <>
+                <span className="font-semibold">Action needed:</span> Assign an
+                arbitrator to review the dispute.
+              </>
+            )}
+            {isUnderReview && (
+              <>
+                <span className="font-semibold">In progress:</span> The
+                arbitrator is reviewing evidence from both sides.
+              </>
+            )}
+          </div>
 
-              {isUnderReview && (
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() =>
-                      updateDispute(dispute.id, { state: "OPENED" })
-                    }
-                  >
-                    Reopen
-                  </Button>
-                  <Button size="sm" onClick={handleResolve}>
-                    Resolve dispute
-                  </Button>
-                </div>
-              )}
+          {/* Actions */}
+          {isOpened && !dispute.arbitrator && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleAssignArbitrator}>
+                Assign arbitrator
+              </Button>
             </div>
           )}
-        </>
+
+          {isUnderReview && (
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  updateDispute(dispute.id, { state: "OPENED" })
+                }
+              >
+                Reopen
+              </Button>
+              <Button size="sm" onClick={handleResolve}>
+                Resolve dispute
+              </Button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Resolved banner ── */}
