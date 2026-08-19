@@ -59,8 +59,8 @@ export function Sidebar() {
           <ThemeToggle />
         </div>
         <p className="px-1 text-[11px] leading-relaxed text-ink-300">
-          Stellar <span className="font-medium text-ink-400">Testnet</span> · Phase 1 scaffold —
-          on-chain actions land in phase 2.
+          Stellar <span className="font-medium text-ink-400">Testnet</span> · Contract logic
+          verified — demo data.
         </p>
       </div>
     </aside>
