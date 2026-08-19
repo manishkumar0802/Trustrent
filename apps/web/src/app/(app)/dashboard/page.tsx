@@ -11,9 +11,12 @@ import { Button } from "@/components/ui/button";
 import { IconChevronRight, IconLock } from "@/components/icons";
 import { AgreementStatusBadge } from "@/components/ui/status-badge";
 import { WalletConnectButton } from "@/components/wallet-connect-button";
+import { useRole } from "@/components/role-provider";
 
 export default function DashboardPage() {
+  const { role } = useRole();
   const primary = MOCK_AGREEMENTS[0];
+  const activeParty = role === "landlord" ? primary.landlord : primary.tenant;
   const quickStats = [
     {
       label: "Deposit locked",
@@ -27,8 +30,10 @@ export default function DashboardPage() {
     },
     {
       label: "Next step",
-      value: primary.state === "ACTIVE" ? "Submit evidence" : "Review outcome",
-      detail: "Keep the process transparent",
+      value: role === "landlord"
+        ? (primary.state === "ACTIVE" ? "Awaiting move-out" : "Review evidence")
+        : (primary.state === "ACTIVE" ? "Submit evidence" : "Review outcome"),
+      detail: role === "landlord" ? "You review and inspect" : "Keep the process transparent",
     },
   ];
 
@@ -36,30 +41,49 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm text-ink-400">Welcome back</p>
+          <p className="text-sm text-ink-400">Welcome back, {role === "landlord" ? "landlord" : "tenant"}</p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
-              {primary.tenant.name} · {primary.property.locality}
+              {activeParty.name} · {primary.property.locality}
             </h1>
             <CurrentUserReputation landlord={primary.landlord} tenant={primary.tenant} />
           </div>
           <p className="mt-1 text-sm text-ink-400">
-            Your security deposit is safe, visible and contract-controlled.
+            {role === "landlord"
+              ? "You manage deposits and review move-outs for your properties."
+              : "Your security deposit is safe, visible and contract-controlled."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-start gap-2">
           <WalletConnectButton />
-          <Link href="/move-out">
-            <Button variant="secondary" size="sm">
-              Submit evidence
-            </Button>
-          </Link>
-          <Link href="/disputes">
-            <Button variant="primary" size="sm">
-              View disputes
-            </Button>
-          </Link>
+          {role === "landlord" ? (
+            <>
+              <Link href="/move-out">
+                <Button variant="secondary" size="sm">
+                  Review move-out
+                </Button>
+              </Link>
+              <Link href="/disputes">
+                <Button variant="primary" size="sm">
+                  Disputes
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/move-out">
+                <Button variant="secondary" size="sm">
+                  Submit evidence
+                </Button>
+              </Link>
+              <Link href="/disputes">
+                <Button variant="primary" size="sm">
+                  View disputes
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
