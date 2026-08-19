@@ -51,7 +51,7 @@ export function fileDispute(
 /** Update a dispute's state (e.g. accept, reject, resolve). */
 export function updateDispute(
   id: string,
-  patch: Partial<Pick<DisputeRecord, "state" | "resolvedAt">>,
+  patch: Partial<Pick<DisputeRecord, "state" | "resolvedAt" | "arbitrator">>,
 ): void {
   disputes = disputes.map((d) => (d.id === id ? { ...d, ...patch } : d));
   notify();
