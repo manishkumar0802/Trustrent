@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { RoleSwitcher } from "../role-switcher";
+import { ThemeToggle } from "../theme-toggle";
+import { WalletConnectButton } from "../wallet-connect-button";
 
 export function Topbar() {
   return (
@@ -12,7 +14,11 @@ export function Topbar() {
         </span>
         <span className="text-sm font-semibold tracking-tight text-ink-900">TrustRent</span>
       </Link>
-      <RoleSwitcher />
+      <div className="flex items-center gap-2">
+        <WalletConnectButton errorAsDropdown showStatusHint={false} />
+        <ThemeToggle />
+        <RoleSwitcher />
+      </div>
     </header>
   );
 }

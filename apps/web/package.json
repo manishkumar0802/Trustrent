@@ -14,6 +14,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@stellar/freighter-api": "^2.0.0",
     "@trustrent/shared": "*",
     "@trustrent/types": "*",
     "clsx": "^2.1.1",

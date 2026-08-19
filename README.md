@@ -17,10 +17,11 @@ SETTLEMENT → CLOSED`.
 - **Evidence:** files stored off-chain; the chain keeps only content
   references (hash/CID, submitter, timestamp).
 
-> **Status — phase 1 scaffold.** The UI, design system, routes, monorepo and
-> contract workspace (placeholder contracts with unit tests) are in place. The
-> blockchain client is a typed stub that intentionally throws — nothing is
-> faked. On-chain wiring is phase 2 (see `docs/roadmap.md`).
+> **Status — phase 2 contract logic verified; phase 3 submission prep in progress.**
+> The monorepo, frontend routes, contract workspace, state machine, escrow
+> lifecycle, dispute flow, and user registry logic are in place and validated by
+> Rust tests. The remaining work is production hardening: wallet/auth wiring,
+> live testnet integration, deployment proof, and the public demo submission.
 
 ---
 
@@ -65,6 +66,40 @@ npm run contracts:check   # cargo check --workspace
 npm run contracts:test    # cargo test --workspace
 cd contracts && soroban contract build   # optimized WASM (needs soroban-cli)
 ```
+
+## Orange Belt submission checklist
+
+The project is targeting the required submission items, not a full production roadmap:
+
+- Public GitHub repo
+- README with setup + architecture + deploy steps
+- 10+ meaningful commits
+- Live demo link (Vercel / Netlify)
+- Contract deployment address
+- Transaction hash for contract interaction
+- Screenshot of mobile-responsive UI
+- Screenshot of CI pipeline running
+- Screenshot of passing tests (3+)
+- Demo video (1–2 minutes)
+
+## Deploy and demo runbook
+
+```bash
+# Root workspace
+npm install
+npm run dev --workspace @trustrent/web
+
+# Contract verification (use a writable target dir on Windows)
+$env:CARGO_TARGET_DIR='C:\trustrent-target'
+cd contracts
+cargo test --workspace
+
+# Deployment plan
+npm run deploy --workspace @trustrent/scripts
+```
+
+Use a local testnet account and populate `.env` with your Stellar values before
+running the deploy script. The repo is configured for development/testnet only.
 
 Environment examples: `.env.example` (root, for scripts), `apps/web/.env.example`,
 `apps/api/.env.example`. Copy to `.env`/`.env.local` and never commit secrets.

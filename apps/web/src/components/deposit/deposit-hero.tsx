@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Agreement, Role } from "@trustrent/types";
 import { formatINR, shortAddress } from "@trustrent/shared";
 import { Button } from "../ui/button";
@@ -40,20 +41,24 @@ export function DepositHero({ agreement, role }: { agreement: Agreement; role: R
         <div className="shrink-0 space-y-3">
           {role === "tenant" ? (
             <>
-              <Button size="lg" className="w-full sm:w-auto" title="Arrives in phase 2">
-                Request move-out
-              </Button>
+              <Link href="/move-out">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Request move-out
+                </Button>
+              </Link>
               <p className="max-w-60 text-center text-[11px] leading-relaxed text-ink-300 sm:text-left">
-                Phase 1 scaffold — on-chain actions are wired in phase 2.
+                Evidence-first move-out flow with escrow-safe steps.
               </p>
             </>
           ) : (
             <>
-              <Button size="lg" className="w-full sm:w-auto" title="Arrives in phase 2">
-                Review move-out
-              </Button>
+              <Link href="/move-out">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Review move-out
+                </Button>
+              </Link>
               <p className="max-w-60 text-center text-[11px] leading-relaxed text-ink-300 sm:text-left">
-                Phase 1 scaffold — on-chain actions are wired in phase 2.
+                Review the inspection and dispute status in context.
               </p>
             </>
           )}

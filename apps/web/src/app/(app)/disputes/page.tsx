@@ -1,9 +1,14 @@
-import type { Metadata } from "next";
+"use client";
+
+import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconScale } from "@/components/icons";
-
-export const metadata: Metadata = { title: "Disputes" };
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { IconScale, IconChevronRight } from "@/components/icons";
+import { formatINR, shortAddress } from "@trustrent/shared";
+import { MOCK_DISPUTES, MOCK_AGREEMENTS } from "@/data/mock-data";
+import { AgreementStatusBadge } from "@/components/ui/status-badge";
 
 export default function DisputesPage() {
   return (
@@ -15,11 +20,72 @@ export default function DisputesPage() {
         </p>
       </header>
 
-      <EmptyState
-        icon={<IconScale className="size-8" />}
-        title="No open disputes"
-        description="Demo data has no disputes. Open disputes appear here with their evidence, proposed deductions and resolution status."
-      />
+      {MOCK_DISPUTES.length === 0 ? (
+        <EmptyState
+          icon={<IconScale className="size-8" />}
+          title="No open disputes"
+          description="No disputes have been filed yet. Open disputes appear here with their evidence, proposed deductions and resolution status."
+        />
+      ) : (
+        <ul className="space-y-3">
+          {MOCK_DISPUTES.map((dispute) => {
+            const agreement = MOCK_AGREEMENTS.find((a) => a.id === dispute.agreementId);
+            return (
+              <li key={dispute.id}>
+                <div className="rounded-2xl border border-border bg-surface p-5 shadow-card">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-base font-semibold text-ink-900">
+                          {dispute.id}
+                        </h2>
+                        <DisputeStateBadge state={dispute.state} />
+                      </div>
+                      {agreement && (
+                        <Link
+                          href={`/agreements/${agreement.id}`}
+                          className="mt-1 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-900"
+                        >
+                          {agreement.property.name} · {agreement.id}
+                          <IconChevronRight className="size-3.5" />
+                        </Link>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {dispute.proposedDeduction && (
+                        <div>
+                          <p className="text-xs text-ink-400">Proposed deduction</p>
+                          <p className="text-lg font-semibold tracking-tight text-danger-600">
+                            {formatINR(dispute.proposedDeduction.value)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-sm text-ink-500">{dispute.reason}</p>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">
+                    <span className="text-xs text-ink-400">
+                      Opened {new Date(dispute.openedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                    {dispute.arbitrator && (
+                      <span className="text-xs text-ink-400">
+                        Arbitrator: {shortAddress(dispute.arbitrator)}
+                      </span>
+                    )}
+                    {agreement && (
+                      <span className="text-xs text-ink-400">
+                        Deposit: {formatINR(agreement.deposit.value)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <ExplainCard
@@ -38,18 +104,18 @@ export default function DisputesPage() {
           text="Agreed deduction splits the deposit; amounts are released by the contract, not by hand."
         />
       </div>
-
-      <Card>
-        <CardHeader title="Dispute contract" subtitle="Stellar Testnet · placeholder address" />
-        <CardBody>
-          <p className="font-mono text-sm text-ink-500">CCQJZ6MOVE3UPPERDISPUTEDEMO000002</p>
-          <p className="mt-2 text-xs text-ink-400">
-            Deployed and bound via the dispute contract in phase 2 (see docs/contracts.md).
-          </p>
-        </CardBody>
-      </Card>
     </div>
   );
+}
+
+function DisputeStateBadge({ state }: { state: string }) {
+  const tones: Record<string, { label: string; tone: "forest" | "sage" | "amber" | "danger" | "neutral" }> = {
+    OPENED: { label: "Opened", tone: "danger" },
+    UNDER_REVIEW: { label: "Under review", tone: "amber" },
+    RESOLVED: { label: "Resolved", tone: "sage" },
+  };
+  const meta = tones[state] ?? { label: state, tone: "neutral" as const };
+  return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 
 function ExplainCard({ n, title, text }: { n: string; title: string; text: string }) {

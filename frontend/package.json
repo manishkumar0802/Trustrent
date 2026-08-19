@@ -1,0 +1,9 @@
+{
+  "name": "frontend-launcher",
+  "private": true,
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\start.ps1",
+    "build": "cd .. && npm run build --workspace @trustrent/web",
+    "start": "cd .. && npm run start --workspace @trustrent/web"
+  }
+}

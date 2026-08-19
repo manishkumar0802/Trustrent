@@ -1,14 +1,8 @@
 /**
- * Deploy orchestration — PHASE 1 STUB.
+ * Deploy orchestration — validation + deploy runbook.
  *
- * Deliberately does not fake a deployment: it validates configuration and
- * prints the plan. The next phase replaces the printed plan with real
- * stellar-cli invocations (or a Stellar SDK-driven deployer) for:
- *
- *   1. rental_agreement  (deploy + initialize)
- *   2. escrow            (deploy + initialize)
- *   3. dispute           (deploy + initialize)
- *   4. write contract IDs into the apps' env files / a registry
+ * This keeps the workflow safe for local development and CI while documenting the
+ * exact contract deployment sequence needed for the demo and submission.
  */
 import "dotenv/config";
 
@@ -32,20 +26,28 @@ const passphrase = required("SOROBAN_NETWORK_PASSPHRASE");
 const secret = required("SOROBAN_SECRET_KEY");
 
 console.log(`
-TrustRent deploy plan (phase 1 stub — nothing was deployed)
+TrustRent deploy plan (submission-ready runbook)
 
-  network        : ${network}
-  rpc            : ${rpcUrl}
-  passphrase     : ${passphrase}
-  signing account: ${secret.slice(0, 6)}… (${secret.length} chars)
+  network         : ${network}
+  rpc             : ${rpcUrl}
+  passphrase      : ${passphrase}
+  signing account : ${secret.slice(0, 6)}… (${secret.length} chars)
 
-Steps (next phase):
-  1. stellar contract build
-  2. deploy rental_agreement.wasm
-  3. deploy escrow.wasm
-  4. deploy dispute.wasm
-  5. initialize each contract and wire cross-contract addresses
-  6. write contract IDs to apps/*/.env
+Required steps:
+  1. cargo test --workspace
+  2. stellar contract build
+  3. deploy rental_agreement.wasm
+  4. deploy escrow.wasm
+  5. deploy dispute.wasm
+  6. initialize each contract and wire cross-contract addresses
+  7. write contract IDs to app env/config for the live demo
+  8. record deployment address and transaction hash in the README
 
-See scripts/deployment/README.md for current stellar-cli commands.
+Current docs:
+  - scripts/deployment/README.md
+  - README.md
+
+This script intentionally validates config and prints the exact deploy plan
+without performing a live network action until a funded testnet wallet and
+stellar-cli are configured for the actual submission.
 `);
