@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconScale, IconChevronRight } from "@/components/icons";
 import { formatINR, shortAddress } from "@trustrent/shared";
-import { MOCK_DISPUTES, MOCK_AGREEMENTS } from "@/data/mock-data";
-import { AgreementStatusBadge } from "@/components/ui/status-badge";
+import { MOCK_AGREEMENTS } from "@/data/mock-data";
+import { useDisputes } from "@/hooks";
 
 export default function DisputesPage() {
+  const disputes = useDisputes();
+
   return (
     <div className="space-y-6">
       <header>
@@ -20,7 +22,7 @@ export default function DisputesPage() {
         </p>
       </header>
 
-      {MOCK_DISPUTES.length === 0 ? (
+      {disputes.length === 0 ? (
         <EmptyState
           icon={<IconScale className="size-8" />}
           title="No open disputes"
@@ -28,7 +30,7 @@ export default function DisputesPage() {
         />
       ) : (
         <ul className="space-y-3">
-          {MOCK_DISPUTES.map((dispute) => {
+          {disputes.map((dispute) => {
             const agreement = MOCK_AGREEMENTS.find((a) => a.id === dispute.agreementId);
             return (
               <li key={dispute.id}>
