@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { RoleProvider } from "../role-provider";
+import { WalletDebug } from "../wallet-debug";
 import { BottomNav } from "./bottom-nav";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </main>
         </div>
         <BottomNav />
+        <WalletDebug />
       </div>
     </RoleProvider>
   );

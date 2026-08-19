@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TrustRent cat favicon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="fur" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="ear" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#6ee7b7"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+
+  <path d="M41 51 28 36l18 9 10 17-15 4Z" fill="url(#ear)"/>
+  <path d="M87 51 100 36l-18 9-10 17 15 4Z" fill="url(#ear)"/>
+
+  <path d="M39 87V52c0-7.7 6.3-14 14-14h22c7.7 0 14 6.3 14 14v35H39Z" fill="url(#fur)"/>
+  <path d="M49 43h30" stroke="#0f172a" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+
+  <circle cx="52" cy="63" r="5" fill="#0f172a"/>
+  <circle cx="76" cy="63" r="5" fill="#0f172a"/>
+  <path d="M60 70c2 2.7 6 2.7 8 0" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none"/>
+
+  <path d="M44 88c6 8 12.5 12 20 12s14-4 20-12" stroke="#0f172a" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M56 48 64 36l8 12" stroke="#0f172a" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+  <path d="M30 88c7-8 13.5-12 20-12h28c6.5 0 13 4 20 12" fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+</svg>

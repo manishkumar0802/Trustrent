@@ -1,10 +1,8 @@
-import type { Agreement, ContractEvent, UserRecord } from "@trustrent/types";
+import type { Agreement, ContractEvent, DisputeRecord, UserRecord } from "@trustrent/types";
 
 /**
- * PHASE 1 DEMO DATA — intentionally separate from any on-chain state.
- * The blockchain client (@trustrent/blockchain) is a stub that throws; this
- * data exists so the design system and routes are real and reviewable.
- * Delete when TrustRentClient is wired in phase 2.
+ * Demo data — mirrors what on-chain reads would return. Replaced by live
+ * Soroban contract queries once the blockchain client is wired.
  */
 
 export const ESCROW_CONTRACT_ID = "CCQJZ6MOVE3UPPERESCROWDEMO000001";
@@ -210,4 +208,29 @@ export const MOCK_EVENTS: ContractEvent[] = [
 
 export function getMockAgreement(id: string): Agreement | undefined {
   return MOCK_AGREEMENTS.find((a) => a.id === id);
+}
+
+/* ------------------------------------------------------------------ */
+/* Disputes                                                            */
+/* ------------------------------------------------------------------ */
+
+export const MOCK_DISPUTES: DisputeRecord[] = [
+  {
+    id: "DSP-001",
+    agreementId: "AG-1017",
+    initiator: "landlord",
+    arbitrator: "GARBITRATOR00000000000000000006",
+    reason: "Tenant claims full refund but landlord proposes ₹8,000 deduction for kitchen repaint and lock replacement.",
+    state: "UNDER_REVIEW",
+    proposedDeduction: { value: 8000, currency: "INR" },
+    openedAt: "2026-07-25T14:30:00.000Z",
+  },
+];
+
+export function getMockDispute(agreementId: string): DisputeRecord | undefined {
+  return MOCK_DISPUTES.find((d) => d.agreementId === agreementId);
+}
+
+export function getMockDisputeById(id: string): DisputeRecord | undefined {
+  return MOCK_DISPUTES.find((d) => d.id === id);
 }

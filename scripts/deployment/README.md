@@ -1,8 +1,8 @@
 # Deployment
 
-Phase 1 provides the _scaffold_ — the deploy orchestration is a typed stub that
-validates configuration and prints the plan. Real deployment lands in phase 2,
-once the contracts are finalized.
+This project is now in the phase 2 verified + phase 3 submission stage. The
+script still validates configuration and prints a deploy plan, but the runbook
+below reflects the intended real deployment sequence for the Orange Belt demo.
 
 ## Prerequisites
 
@@ -10,31 +10,45 @@ once the contracts are finalized.
 - `stellar-cli` (formerly `soroban-cli`) 22.x — verify the installed version
   with `stellar --version` and consult `stellar <command> --help` for exact
   flags, which can drift between CLI releases.
-- A testnet account: `stellar keys generate trustrent-dev` (or fund an existing
-  one via the Stellar Laboratory — Testnet only).
+- A funded Stellar Testnet account: `stellar keys generate trustrent-dev` or
+  use a funded wallet from the Stellar Laboratory.
 
 ## Building contract WASM
 
 ```bash
 cd contracts
-stellar contract build          # optimized WASM into target/wasm32-unknown-unknown/release/
+stellar contract build
 ```
 
-## Deploying (phase 2 sketch — verify flags against your CLI)
+This produces the optimized contract WASM in the standard build output folder.
+
+## Deployment sequence
 
 ```bash
-# From contracts/
-stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/rental_agreement.wasm \
-  --source trustrent-dev \
-  --network testnet
+# 1) Build each contract
+cd contracts
+stellar contract build
 
-stellar contract invoke --id <AGREEMENT_ID> --source trustrent-dev \
-  --network testnet -- create --landlord <G...> --property_ref "..." ...
+# 2) Deploy the three contracts
+stellar contract deploy --wasm target/wasm32-unknown-unknown/release/rental_agreement.wasm --source trustrent-dev --network testnet
+stellar contract deploy --wasm target/wasm32-unknown-unknown/release/escrow.wasm --source trustrent-dev --network testnet
+stellar contract deploy --wasm target/wasm32-unknown-unknown/release/dispute.wasm --source trustrent-dev --network testnet
+
+# 3) Initialize each contract and wire addresses
+# Then persist the resulting contract IDs in a `.env` or config file used by the app.
 ```
 
-`scripts/deployment/deploy.ts` will orchestrate the sequence
-(agreement → escrow → dispute, then `initialize` + wiring) once phase 2 lands.
+The `scripts/deployment/deploy.ts` script remains the safe validation entry point
+for CI / local dev, while the actual contract deployment commands above reflect
+what is needed for the public demo and submission evidence.
+
+## Frontend deployment
+
+For the live demo:
+
+- Vercel for the Next.js frontend
+- Stellar Testnet contract IDs and transaction hashes recorded in the README
+- public demo URL used for submission evidence
 
 ## Environment
 

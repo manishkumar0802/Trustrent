@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="TrustRent favicon">
+  <rect width="128" height="128" fill="#0b1020"/>
+  <g fill="#f8fafc">
+    <rect x="20" y="28" width="20" height="72" rx="4"/>
+    <rect x="20" y="28" width="72" height="20" rx="4"/>
+    <rect x="58" y="28" width="20" height="72" rx="4"/>
+    <rect x="20" y="78" width="58" height="22" rx="4"/>
+  </g>
+</svg>

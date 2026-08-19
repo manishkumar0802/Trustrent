@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { formatINR } from "@trustrent/shared";
 import { MOCK_AGREEMENTS, MOCK_EVENTS } from "@/data/mock-data";
@@ -6,54 +7,98 @@ import { StatusCards } from "@/components/deposit/status-cards";
 import { ActivityFeed } from "@/components/deposit/activity-feed";
 import { CurrentUserReputation } from "@/components/deposit/current-user-reputation";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { IconChevronRight, IconLock } from "@/components/icons";
 import { AgreementStatusBadge } from "@/components/ui/status-badge";
-
-export const metadata: Metadata = { title: "Dashboard" };
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 
 export default function DashboardPage() {
   const primary = MOCK_AGREEMENTS[0];
+  const quickStats = [
+    {
+      label: "Deposit locked",
+      value: formatINR(primary.deposit.value),
+      detail: `${primary.property.name}`,
+    },
+    {
+      label: "Status",
+      value: primary.state === "ACTIVE" ? "Active" : "In progress",
+      detail: "Escrow rules are in force",
+    },
+    {
+      label: "Next step",
+      value: primary.state === "ACTIVE" ? "Submit evidence" : "Review outcome",
+      detail: "Keep the process transparent",
+    },
+  ];
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="text-sm text-ink-400">Welcome back</p>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
-            {primary.tenant.name} · {primary.property.locality}
-          </h1>
-          <CurrentUserReputation landlord={primary.landlord} tenant={primary.tenant} />
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-ink-400">Welcome back</p>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+              {primary.tenant.name} · {primary.property.locality}
+            </h1>
+            <CurrentUserReputation landlord={primary.landlord} tenant={primary.tenant} />
+          </div>
+          <p className="mt-1 text-sm text-ink-400">
+            Your security deposit is safe, visible and contract-controlled.
+          </p>
         </div>
-        <p className="mt-1 text-sm text-ink-400">
-          Your security deposit is safe, visible and contract-controlled.
-        </p>
+
+        <div className="flex flex-wrap items-start gap-2">
+          <WalletConnectButton />
+          <Link href="/move-out">
+            <Button variant="secondary" size="sm">
+              Submit evidence
+            </Button>
+          </Link>
+          <Link href="/disputes">
+            <Button variant="primary" size="sm">
+              View disputes
+            </Button>
+          </Link>
+        </div>
       </header>
 
-      {/* Deposit summary — the hero concept */}
-      <Link
-        href={`/agreements/${primary.id}`}
-        className="group block overflow-hidden rounded-2xl border border-border bg-forest-800 text-ivory-50 shadow-card transition-shadow hover:shadow-pop"
-      >
-        <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-forest-700/70 px-2.5 py-1 text-[11px] font-medium text-forest-100">
-                <IconLock className="size-3" /> LOCKED IN ESCROW
-              </span>
-              <AgreementStatusBadge state={primary.state} />
+      <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
+        <Link
+          href={`/agreements/${primary.id}`}
+          className="group block overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-700 text-ivory-50 shadow-card transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-pop"
+        >
+          <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium text-zinc-100 ring-1 ring-white/15">
+                  <IconLock className="size-3" /> LOCKED IN ESCROW
+                </span>
+                <AgreementStatusBadge state={primary.state} />
+              </div>
+              <p className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+                {formatINR(primary.deposit.value)}
+              </p>
+              <p className="mt-1 text-sm text-zinc-200">Security deposit · {primary.property.name}</p>
             </div>
-            <p className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {formatINR(primary.deposit.value)}
-            </p>
-            <p className="mt-1 text-sm text-forest-100/80">
-              Security deposit · {primary.property.name}
-            </p>
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-zinc-100 transition-transform group-hover:translate-x-0.5">
+              View agreement <IconChevronRight className="size-4" />
+            </span>
           </div>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-forest-100 transition-transform group-hover:translate-x-0.5">
-            View agreement <IconChevronRight className="size-4" />
-          </span>
+        </Link>
+
+        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+          {quickStats.map((stat) => (
+            <div key={stat.label} className="rounded-2xl border border-border bg-surface p-4 shadow-card">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-300">
+                {stat.label}
+              </p>
+              <p className="mt-3 text-xl font-semibold tracking-tight text-ink-900">{stat.value}</p>
+              <p className="mt-1 text-xs text-ink-400">{stat.detail}</p>
+            </div>
+          ))}
         </div>
-      </Link>
+      </div>
 
       <StatusCards agreement={primary} />
 
