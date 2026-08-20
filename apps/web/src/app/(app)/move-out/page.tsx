@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRole } from "@/components/role-provider";
 import { Stepper } from "@/components/ui/stepper";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -187,7 +188,7 @@ export default function MoveOutPage() {
             </div>
             <div className="rounded-lg border border-forest-200 bg-forest-50 px-3 py-2 text-sm text-forest-800">
               <span className="font-semibold">Tip:</span> Switch to Tenant role
-              to see the tenant's evidence submission flow, or stay as Landlord
+              to see the tenant&apos;s evidence submission flow, or stay as Landlord
               to review and inspect.
             </div>
             <div className="flex justify-end gap-2">
@@ -657,9 +658,9 @@ export default function MoveOutPage() {
               >
                 Withdraw dispute
               </Button>
-              <a href="/disputes">
+              <Link href="/disputes">
                 <Button>View disputes</Button>
-              </a>
+              </Link>
             </div>
           </CardBody>
         </Card>
@@ -743,9 +744,9 @@ export default function MoveOutPage() {
               >
                 Cancel dispute
               </Button>
-              <a href="/disputes">
+              <Link href="/disputes">
                 <Button>View disputes</Button>
-              </a>
+              </Link>
             </div>
           </CardBody>
         </Card>
