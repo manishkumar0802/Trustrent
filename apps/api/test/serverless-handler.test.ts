@@ -83,7 +83,7 @@ describe("serverless: handler export", () => {
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`);
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body.ok).toBe(true);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
