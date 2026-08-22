@@ -1,155 +1,349 @@
-# TrustRent
-## CI/CD passing badge - [![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml)
+<div align="center">
 
+# 🔐 TrustRent
 
-## SUBMISSION CHECKLIST:-
-                                                                         
-## Github Repo. Link :- https://github.com/manishkumar0802/Trustrent
+### Your deposit. Locked fairly. Released transparently.
 
-## Live demo link (Vercel):- https://trustrent-lac.vercel.app/   
+[![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml)
+![License](https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-blue)
+![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
+![Rust](https://img.shields.io/badge/rust-1.97-orange)
+![Stellar](https://img.shields.io/badge/stellar-soroban%2022-purple)
 
-## Contract deployment address-
-1) NEXT_PUBLIC_AGREEMENT_CONTRACT_ID=CC3NX7ZRDDW3V4M25XKVIWXMDR6RBKOB3MRQYMEU54AIMO57EL3DI72D
-2) NEXT_PUBLIC_ESCROW_CONTRACT_ID=CBYIYJAOVPFXIWOUKSEKGHN4IN2V5QYHFMVY3XJDSPU4FPE6W7QWMBNV
-3) NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT4RIPNXP6
-## Transaction hash for contract interaction :- 
-Transaction a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
-##  Screenshot: Mobile responsive UI: - <img width="897" height="733" alt="WhatsApp Image 2026-08-22 at 19 35 28" src="https://github.com/user-attachments/assets/deef42dc-e853-4248-8fa0-af7066c85d0d" />
-                               
-## Screenshot: CI/CD pipeline running :-   <img width="1566" height="872" alt="WhatsApp Image 2026-08-22 at 19 40 16" src="https://github.com/user-attachments/assets/a8c9c8a3-81fd-4a51-a4ea-1842a0603992" />
+**A decentralized rental escrow & dispute resolution platform built on Stellar Soroban**
 
+[Getting Started](#-getting-started) • [Architecture](#-architecture) • [Smart Contracts](#-smart-contracts) • [Demo](#-demo) • [Deployment](#-deployment)
 
-## Screenshot: Test output with 3+ passing tests:- <img width="1449" height="954" alt="WhatsApp Image 2026-08-22 at 19 31 27" src="https://github.com/user-attachments/assets/a85e60e6-d237-4c4f-ac4e-e09526825204" />
-
-
-## Demo video link (1–2 minutes) :-
-
-> Your deposit. Locked fairly. Released transparently.
-TrustRent is a production-quality Stellar dApp for **rental security deposits**.
-A tenant's deposit is locked in a **Soroban smart-contract escrow** instead of
-sitting in the landlord's pocket, and released only through a transparent,
-evidence-backed move-out and settlement process.
-
-- **Roles:** Landlord (create agreements, review move-out, approve/deduct,
-  dispute) and Tenant (join, fund deposit, request move-out, submit evidence,
-  accept/reject deductions, dispute).
-- **Escrow lifecycle:** `CREATED → ACTIVE → MOVE_OUT_REQUESTED →
-EVIDENCE_SUBMITTED → INSPECTION_PENDING → APPROVED / DISPUTED →
-SETTLEMENT → CLOSED`.
-- **Network:** Stellar **Testnet** during development (mainnet disabled).
-- **Evidence:** files stored off-chain; the chain keeps only content
-  references (hash/CID, submitter, timestamp).
-
-> **Status — phase 2 contract logic verified; phase 3 submission prep in progress.**
-> The monorepo, frontend routes, contract workspace, state machine, escrow
-> lifecycle, dispute flow, and user registry logic are in place and validated by
-> Rust tests. The remaining work is production hardening: wallet/auth wiring,
-> live testnet integration, deployment proof, and the public demo submission.
+</div>
 
 ---
 
-## Monorepo layout
+## 📌 Overview
+
+TrustRent is a production-quality Stellar dApp that **escrows rental security deposits** in smart contracts instead of letting them sit in a landlord's pocket. Deposits are locked on-chain and released only through a transparent, evidence-backed move-out and settlement process.
+
+| Feature | Description |
+|---|---|
+| 🏠 **Rental Agreements** | Landlord creates, tenant joins — terms locked on-chain |
+| 🔒 **Smart Contract Escrow** | Deposits held by code, not people — no unilateral withdrawal |
+| 📸 **Evidence Pipeline** | Off-chain files (IPFS), on-chain hashes — tamper-proof proof |
+| ⚖️ **Dispute Resolution** | Arbitrator-reviewed splits with binding on-chain execution |
+| 🏆 **Reputation System** | On-chain scores track trust for tenants, landlords, and arbitrators |
+| 📱 **Responsive UI** | Mobile-first design with role-based dashboards |
+
+---
+
+## 🚀 Tech Stack
+
+<div align="center">
+
+| Layer | Technology | Purpose |
+|:---:|---|---|
+| **Smart Contracts** | `Rust` + `Soroban SDK 22` | 4 on-chain contracts: agreement, escrow, dispute, registry |
+| **Frontend** | `Next.js 16` + `React 19` + `Tailwind v4` | Responsive dashboard, agreement & dispute flows |
+| **API** | `Fastify` + `TypeScript` | Health endpoint, mock agreement service |
+| **Shared Packages** | `TypeScript` | Domain types, lifecycle helpers, blockchain client |
+| **CI/CD** | `GitHub Actions` | Contracts + web + API pipelines |
+| **Network** | `Stellar Testnet` | Development & testing (mainnet disabled) |
+
+</div>
+
+---
+
+## 🏗️ Architecture
 
 ```
-apps/
-  web/          Next.js (App Router) + TypeScript + Tailwind v4
-  api/          Fastify service (health + mock agreement service)
-contracts/      Soroban Cargo workspace (Rust, SDK 22)
-  common/       shared contract types + event catalog
-  rental_agreement/  escrow/  dispute/
-packages/
-  types/        domain types mirroring the on-chain state machine
-  shared/       lifecycle order, formatting, event labels
-  blockchain/   typed TrustRentClient stub (phase 2: @stellar/stellar-sdk)
-scripts/        deployment + seed (testnet)
-tests/          integration strategy + fixtures
-docs/           contracts, events, storage, testing, roadmap
-.github/        CI (contracts + web + api)
+┌─────────────────────────────────────────────────────────────┐
+│                    TRUSTRENT ARCHITECTURE                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐   HTTP    ┌──────────────┐               │
+│  │  apps/web    │ ────────► │  apps/api    │               │
+│  │  Next.js     │           │  Fastify     │               │
+│  └──────┬───────┘           └──────┬───────┘               │
+│         │                          │                        │
+│         ▼                          ▼                        │
+│  ┌──────────────────────────────────────────┐               │
+│  │         packages/blockchain              │               │
+│  │    TrustRentClient (@stellar/stellar-sdk)│               │
+│  └──────────────────┬───────────────────────┘               │
+│                     │ Soroban RPC                            │
+│                     ▼                                       │
+│  ┌──────────────────────────────────────────┐               │
+│  │          SOROBAN CONTRACTS               │               │
+│  │                                          │               │
+│  │  ┌─────────────────┐   ┌──────────┐     │               │
+│  │  │ Rental Agreement │──►│  Escrow  │     │               │
+│  │  │ (orchestrator)   │◄──│ (vault)  │     │               │
+│  │  └────────┬─────────┘   └────┬─────┘     │               │
+│  │           │                   │           │               │
+│  │  ┌────────▼─────────┐        │           │               │
+│  │  │     Dispute      │────────┘           │               │
+│  │  │ (mediator)       │                    │               │
+│  │  └────────┬─────────┘                    │               │
+│  │           │                              │               │
+│  │  ┌────────▼─────────┐                    │               │
+│  │  │  User Registry   │                    │               │
+│  │  │ (identity)       │                    │               │
+│  │  └──────────────────┘                    │               │
+│  └──────────────────────────────────────────┘               │
+│         │ references only (hash/CID)                        │
+│         ▼                                                   │
+│  ┌──────────────────────────────────────────┐               │
+│  │     Off-chain Evidence (IPFS / local)    │               │
+│  └──────────────────────────────────────────┘               │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Getting started
+## 📁 Project Structure
 
-Prerequisites: Node ≥ 20, npm, Rust toolchain (with `wasm32-unknown-unknown`
-target for WASM builds), and optionally `soroban-cli` 22.x.
+```
+TrustRent/
+├── apps/
+│   ├── web/                    # Next.js frontend
+│   │   └── src/
+│   │       ├── app/            # App Router pages
+│   │       ├── components/     # UI components + deposit flow
+│   │       ├── data/           # Mock data (phase 1)
+│   │       ├── hooks/          # React hooks
+│   │       ├── services/       # Storage + dispute stores
+│   │       └── test/           # Frontend tests
+│   └── api/                    # Fastify API service
+│       └── src/
+│           ├── modules/        # Agreement routes + service
+│           └── index.ts        # Server entry
+├── contracts/                  # Soroban Cargo workspace (Rust)
+│   ├── common/                 # Shared types, errors, events, interfaces
+│   ├── rental_agreement/       # Agreement lifecycle orchestrator
+│   ├── escrow/                 # Deposit vault — holds & releases funds
+│   ├── dispute/                # Dispute records & resolution
+│   └── user_registry/          # Identity directory & reputation
+├── packages/
+│   ├── types/                  # TypeScript domain types
+│   ├── shared/                 # Lifecycle helpers, formatting, event labels
+│   └── blockchain/             # Typed TrustRentClient stub
+├── scripts/
+│   ├── deployment/             # Deploy + seed scripts
+│   └── seed/                   # Test fixture generator
+├── tests/                      # Integration strategy + fixtures
+├── docs/                       # Architecture, events, storage, roadmap
+└── .github/
+    └── workflows/ci.yml        # CI: contracts + web + api
+```
+
+---
+
+## 📜 Smart Contracts
+
+Four Soroban contracts, each with a single responsibility:
+
+| Contract | Role | Key Functions |
+|---|---|---|
+| **`rental_agreement`** | Orchestrator — manages the full lifecycle | `create_agreement`, `join_agreement`, `lock_deposit`, `request_move_out`, `submit_evidence`, `approve_inspection`, `open_dispute`, `close_agreement` |
+| **`escrow`** | Vault — holds and releases deposits | `lock_deposit`, `release_full`, `release_partial`, `lock_for_dispute`, `settle_dispute` |
+| **`dispute`** | Mediator — records disputes & resolutions | `open_dispute`, `propose_resolution`, `accept_resolution`, `resolve_dispute`, `set_arbitrator` |
+| **`user_registry`** | Directory — roles & reputation | `register_user`, `get_user`, `adjust_reputation`, `set_reputation_source` |
+
+### Lifecycle State Machine
+
+```
+CREATED ──► ACTIVE ──► MOVE_OUT_REQUESTED ──► EVIDENCE_SUBMITTED
+                                                    │
+                                              INSPECTION_PENDING
+                                                │           │
+                                           ┌────▼──┐   ┌───▼────┐
+                                           │APPROVED│  │DISPUTED│
+                                           └───┬───┘   └───┬────┘
+                                               │       RESOLVED
+                                          SETTLEMENT       │
+                                               │      SETTLEMENT
+                                               └───┬────────┘
+                                                   ▼
+                                                 CLOSED
+```
+
+---
+
+## 🛠️ Getting Started
+
+### Prerequisites
+
+| Requirement | Version |
+|---|---|
+| Node.js | ≥ 20.0.0 |
+| npm | Latest |
+| Rust | 1.97+ with `wasm32-unknown-unknown` target |
+| soroban-cli | 22.x (optional, for WASM builds) |
+
+### Installation
 
 ```bash
-# 1. Install JS dependencies (npm workspaces)
+# Clone the repository
+git clone https://github.com/manishkumar0802/Trustrent.git
+cd Trustrent
+
+# Install all dependencies (npm workspaces)
 npm install
-
-# 2. Run the web app (design system + demo routes)
-npm run dev            # http://localhost:3000
-
-# 3. Run the API (health + mock agreements)
-npm run dev:api        # http://localhost:4000
-
-# 4. Contracts
-npm run contracts:check   # cargo check --workspace
-npm run contracts:test    # cargo test --workspace
-cd contracts && soroban contract build   # optimized WASM (needs soroban-cli)
 ```
 
-## Orange Belt submission checklist
-
-The project is targeting the required submission items, not a full production roadmap:
-
-- Public GitHub repo
-- README with setup + architecture + deploy steps
-- 10+ meaningful commits
-- Live demo link (Vercel / Netlify)
-- Contract deployment address
-- Transaction hash for contract interaction
-- Screenshot of mobile-responsive UI
-- Screenshot of CI pipeline running
-- Screenshot of passing tests (3+)
-- Demo video (1–2 minutes)
-
-## Deploy and demo runbook
+### Run the Frontend
 
 ```bash
-# Root workspace
-npm install
-npm run dev --workspace @trustrent/web
-
-# Contract verification (use a writable target dir on Windows)
-$env:CARGO_TARGET_DIR='C:\trustrent-target'
-cd contracts
-cargo test --workspace
-
-# Deployment plan
-npm run deploy --workspace @trustrent/scripts
+npm run dev
+# Open http://localhost:3000
 ```
 
-Use a local testnet account and populate `.env` with your Stellar values before
-running the deploy script. The repo is configured for development/testnet only.
-
-Environment examples: `.env.example` (root, for scripts), `apps/web/.env.example`,
-`apps/api/.env.example`. Copy to `.env`/`.env.local` and never commit secrets.
-
-## Common commands
+### Run the API
 
 ```bash
-npm run typecheck   # tsc across workspaces
-npm run lint        # eslint across workspaces
-npm run test        # vitest across workspaces
-npm run build       # production build of the web app
-npm run format      # prettier --write
-npm run seed        # generate tests/fixtures/agreements.seed.json
-npm run deploy      # deploy stub (validates env, prints plan)
+npm run dev:api
+# Open http://localhost:4000/health
 ```
 
-## Docs
+### Run the Contracts
 
-- `ARCHITECTURE.md` — system design, contracts, data flow, state machine,
-  on-chain vs off-chain, events, security assumptions.
-- `docs/contracts.md` — contract function surface.
-- `docs/events.md` — event catalog.
-- `docs/storage.md` — off-chain evidence storage abstraction.
-- `docs/roadmap.md` — phase plan.
-- `docs/pitch.md` — product pitch: problem, roles, workflow, contract
-  architecture, event streaming, frontend, and why Stellar.
+```bash
+# Type-check
+npm run contracts:check
 
-## License
+# Run all contract tests
+npm run contracts:test
 
-MIT OR Apache-2.0.
+# Build optimized WASM (requires soroban-cli)
+cd contracts && soroban contract build
+```
+
+### All Commands
+
+```bash
+npm run dev          # Start frontend (localhost:3000)
+npm run dev:api      # Start API (localhost:4000)
+npm run build        # Production build of the web app
+npm run typecheck    # TypeScript type-check across workspaces
+npm run lint         # ESLint across workspaces
+npm run test         # Run all tests (Vitest + contract tests)
+npm run format       # Prettier format
+npm run seed         # Generate test fixture data
+npm run deploy       # Deployment plan (validates env, prints plan)
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Frontend tests (Vitest)
+npm run test --workspace @trustrent/web
+
+# Contract tests (Cargo)
+cd contracts && cargo test --workspace
+```
+
+The contract test harness registers **all four contracts** in a single Soroban environment, so every cross-contract call executes against real state — not mocks.
+
+**Covered scenarios:**
+- ✅ Agreement creation & joining
+- ✅ Deposit locking & unauthorized withdrawal rejection
+- ✅ Move-out request & evidence submission
+- ✅ Full refund flow (clean move-out)
+- ✅ Partial deduction flow (agreed split)
+- ✅ Dispute flow (freeze → propose → accept → settle)
+- ✅ Arbitrator binding decisions
+- ✅ Invalid state transition rejection
+- ✅ Unauthorized action rejection
+- ✅ Reputation updates (clean move-out & dispute outcomes)
+
+---
+
+## 🚢 Deployment
+
+### Environment Setup
+
+```bash
+# Copy environment examples
+cp .env.example .env                    # Root (scripts)
+cp apps/web/.env.example apps/web/.env.local    # Frontend
+cp apps/api/.env.example apps/api/.env          # API
+```
+
+### Deploy to Stellar Testnet
+
+```bash
+# 1. Generate a testnet account
+soroban keys generate trustrent-dev
+
+# 2. Fund it via Stellar Laboratory or friendbot
+
+# 3. Build contract WASM
+cd contracts && stellar contract build
+
+# 4. Deploy each contract
+stellar contract deploy --wasm target/wasm32-unknown-unknown/release/rental_agreement.wasm --source trustrent-dev --network testnet
+stellar contract deploy --wasm target/wasm32-unknown-unknown/release/escrow.wasm --source trustrent-dev --network testnet
+stellar contract deploy --wasm target/wasm32-unknown-unknown/release/dispute.wasm --source trustrent-dev --network testnet
+
+# 5. Initialize and wire contract addresses
+# (see scripts/deployment/ for the full sequence)
+```
+
+### Deploy Frontend to Vercel
+
+```bash
+# Push to GitHub, then connect to Vercel
+# Vercel auto-detects Next.js and deploys
+```
+
+---
+
+## 📄 Documentation
+
+| Document | Description |
+|---|---|
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | System design, contracts, data flow, state machine, security |
+| [`docs/pitch.md`](docs/pitch.md) | Product pitch: problem, solution, roles, workflow, why Stellar |
+| [`docs/roadmap.md`](docs/roadmap.md) | Phase plan: scaffold → chain wiring → production |
+| [`docs/contracts.md`](docs/contracts.md) | Contract function surface & interfaces |
+| [`docs/events.md`](docs/events.md) | Event catalog (15 canonical events) |
+| [`docs/storage.md`](docs/storage.md) | Off-chain evidence storage abstraction |
+| [`docs/youtube-script.md`](docs/youtube-script.md) | YouTube video script |
+| [`docs/youtube-script-v2.md`](docs/youtube-script-v2.md) | Casual walkthrough video script |
+
+---
+
+## 📊 CI/CD Pipeline
+
+GitHub Actions runs on every push and pull request:
+
+| Job | Checks |
+|---|---|
+| **Contracts** | `cargo fmt`, `clippy`, `cargo test`, WASM build |
+| **Web** | ESLint, TypeScript typecheck, Vitest, Next.js build |
+| **API** | ESLint, TypeScript typecheck, Vitest |
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT OR Apache-2.0** License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**Built with ❤️ on Stellar Soroban**
+
+[![Stellar](https://img.shields.io/badge/Built%20on-Stellar%20Soroban-08B5E5?style=for-the-badge&logo=stellar&logoColor=white)](https://stellar.org)
+
+</div>
