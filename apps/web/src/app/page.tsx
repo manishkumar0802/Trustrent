@@ -138,7 +138,7 @@ export default function LandingPage() {
                   href="/dashboard"
                   className="inline-flex h-12 items-center gap-2 rounded-xl bg-forest-700 px-6 text-sm font-medium text-ivory-50 shadow-card transition-colors hover:bg-forest-800"
                 >
-                  Explore demo
+                  Explore
                   <IconChevronRight className="size-4" />
                 </Link>
                 <a
