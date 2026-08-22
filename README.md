@@ -4,7 +4,7 @@
 
 ## SUBMISSION CHECKLIST:-
                                                                          
-## Github Repo. Link :- 
+## Github Repo. Link :- https://github.com/manishkumar0802/Trustrent
 
 ## Live demo link (Vercel):- https://trustrent-lac.vercel.app/   
 
