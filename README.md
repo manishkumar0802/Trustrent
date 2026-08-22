@@ -1,5 +1,5 @@
 # TrustRent
-CI/CD passing badge- [![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml)
+## CI/CD passing badge - [![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml)
 
 > Your deposit. Locked fairly. Released transparently.
 
