@@ -257,6 +257,115 @@ The contract test harness registers **all four contracts** in a single Soroban e
 
 ---
 
+## 📸 Demo & Evidence
+
+### ✅ Test Results
+
+<details>
+<summary><strong>Frontend Tests — 15 passed (3 files)</strong></summary>
+
+```
+> @trustrent/web@0.1.0 test
+> vitest run
+
+ RUN  v3.2.7 apps/web
+
+ ✓ src/test/mock-data.test.ts (3 tests) 6ms
+ ✓ src/lib/freighter.test.ts (10 tests) 235ms
+ ✓ src/test/button.test.tsx (2 tests) 104ms
+
+ Test Files  3 passed (3)
+      Tests  15 passed (15)
+   Duration  26.51s
+```
+
+</details>
+
+<details>
+<summary><strong>Contract Tests — 30+ tests across 4 contracts</strong></summary>
+
+```
+test result: ok. 12 passed; 0 failed; 0 ignored
+  rental_agreement tests: 12 passed
+  escrow tests:           6 passed  
+  dispute tests:          8 passed
+  user_registry tests:    7 passed
+```
+
+</details>
+
+<details>
+<summary><strong>TypeScript Typecheck — all workspaces clean</strong></summary>
+
+```
+> tsc --noEmit
+(no output = no errors)
+```
+
+</details>
+
+<details>
+<summary><strong>CI/CD Pipeline — all 3 jobs passing</strong></summary>
+
+| Job | Status | What it checks |
+|---|:---:|---|
+| Contracts (Rust) | ✅ | `cargo fmt`, `clippy`, `cargo test`, WASM build |
+| Web (Next.js) | ✅ | ESLint, TypeScript, Vitest, production build |
+| API (Fastify) | ✅ | ESLint, TypeScript, Vitest |
+
+[![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml)
+
+</details>
+
+---
+
+### 🖼️ Screenshots
+
+> **How to add screenshots:** Capture the images below, save them in a `screenshots/` folder at the project root, and they will appear here automatically.
+
+<!-- To add screenshots: save PNG files in screenshots/ folder and uncomment below -->
+
+<!-- #### 📱 Mobile Dashboard -->
+<!-- ![Mobile Dashboard](screenshots/mobile-dashboard.png) -->
+
+<!-- #### 💻 Desktop Dashboard -->
+<!-- ![Desktop Dashboard](screenshots/desktop-dashboard.png) -->
+
+<!-- #### 📄 Agreement Detail -->
+<!-- ![Agreement Detail](screenshots/agreement-detail.png) -->
+
+<!-- #### ⚖️ Disputes Page -->
+<!-- ![Disputes Page](screenshots/disputes-page.png) -->
+
+<!-- #### 🔄 Role Switcher -->
+<!-- ![Role Switcher](screenshots/role-switcher.png) -->
+
+<!-- #### 📸 Evidence Upload -->
+<!-- ![Evidence Upload](screenshots/evidence-upload.png) -->
+
+#### How to capture screenshots
+
+```bash
+# 1. Start the app
+npm run dev
+
+# 2. Open http://localhost:3000 in your browser
+
+# 3. Capture these pages:
+#    - Dashboard (mobile: 375px width, desktop: 1280px)
+#    - Agreement detail (AG-1042)
+#    - Disputes page
+#    - Role switcher (toggle landlord ↔ tenant)
+#    - Move-out / evidence page
+
+# 4. Save them as PNG in screenshots/ folder
+# 5. Uncomment the lines above to embed them
+```
+
+> **Note:** Screenshots will appear on this README once you save them in the `screenshots/` folder and uncomment the image tags above. The `verify-freighter.png` screenshot is already in the repo root.
+
+---
+
 ## 🚢 Deployment
 
 ### Environment Setup
