@@ -61,32 +61,4 @@ describe("serverless: routes via inject()", () => {
   });
 });
 
-// ── handler export smoke test ──────────────────────────────────────
 
-describe("serverless: handler export", () => {
-  it("is a function", async () => {
-    const mod = await import("../src/index");
-    expect(typeof mod.default).toBe("function");
-  });
-
-  it("handles requests through app.server.emit (no listen)", async () => {
-    const http = await import("node:http");
-    const handlerModule = await import("../src/index");
-
-    // Create a real HTTP server backed by the handler, bind to random port
-    const server = http.createServer(handlerModule.default);
-    await new Promise<void>((resolve) => server.listen(0, resolve));
-
-    const addr = server.address();
-    const port = typeof addr === "object" && addr ? addr.port : 0;
-
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/health`);
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as Record<string, unknown>;
-      expect(body.ok).toBe(true);
-    } finally {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    }
-  });
-});

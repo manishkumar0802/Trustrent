@@ -5,6 +5,7 @@ import { loadConfig } from "./config";
 import { agreementRoutes } from "./modules/agreements/routes";
 import { MockAgreementRepository } from "./modules/agreements/service";
 
+
 export async function buildServer() {
   const config = loadConfig();
   const app = Fastify({ logger: true });
@@ -29,31 +30,6 @@ export async function buildServer() {
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-
-/* ------------------------------------------------------------------ */
-/*  Vercel / serverless handler                                        */
-/* ------------------------------------------------------------------ */
-let cachedApp: Awaited<ReturnType<typeof buildServer>> | null = null;
-
-async function getServer() {
-  if (!cachedApp) {
-    cachedApp = await buildServer();
-    await cachedApp.ready();
-  }
-  return cachedApp;
-}
-
-/**
- * Default export for Vercel serverless functions.
- * Handles incoming HTTP requests by forwarding them to the Fastify instance.
- */
-export default async function handler(
-  req: import("node:http").IncomingMessage,
-  res: import("node:http").ServerResponse,
-) {
-  const app = await getServer();
-  app.server.emit("request", req, res);
-}
 
 /* ------------------------------------------------------------------ */
 /*  Standalone mode (local dev / node src/index.ts)                   */

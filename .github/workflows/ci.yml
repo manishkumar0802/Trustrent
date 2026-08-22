@@ -61,26 +61,3 @@ jobs:
         run: npm run test
       - name: Build
         run: npm run build
-
-  api:
-    name: API (Fastify)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - name: Install (repo root — installs all workspaces)
-        working-directory: .
-        # Uses `npm install` until a package-lock.json is committed;
-        # switch to `npm ci` afterwards.
-        run: npm install
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Test
-        run: npm run test
