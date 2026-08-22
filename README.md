@@ -1,8 +1,30 @@
 # TrustRent
 ## CI/CD passing badge - [![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml)
 
-> Your deposit. Locked fairly. Released transparently.
 
+## SUBMISSION CHECKLIST:-
+                                                                         
+## Github Repo. Link :- 
+
+## Live demo link (Vercel):- https://trustrent-lac.vercel.app/   
+
+## Contract deployment address-
+1) NEXT_PUBLIC_AGREEMENT_CONTRACT_ID=CC3NX7ZRDDW3V4M25XKVIWXMDR6RBKOB3MRQYMEU54AIMO57EL3DI72D
+2) NEXT_PUBLIC_ESCROW_CONTRACT_ID=CBYIYJAOVPFXIWOUKSEKGHN4IN2V5QYHFMVY3XJDSPU4FPE6W7QWMBNV
+3) NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT4RIPNXP6
+## Transaction hash for contract interaction :- 
+Transaction a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
+##  Screenshot: Mobile responsive UI: - <img width="897" height="733" alt="WhatsApp Image 2026-08-22 at 19 35 28" src="https://github.com/user-attachments/assets/deef42dc-e853-4248-8fa0-af7066c85d0d" />
+                               
+## Screenshot: CI/CD pipeline running :-   <img width="1566" height="872" alt="WhatsApp Image 2026-08-22 at 19 40 16" src="https://github.com/user-attachments/assets/a8c9c8a3-81fd-4a51-a4ea-1842a0603992" />
+
+
+## Screenshot: Test output with 3+ passing tests:- <img width="1449" height="954" alt="WhatsApp Image 2026-08-22 at 19 31 27" src="https://github.com/user-attachments/assets/a85e60e6-d237-4c4f-ac4e-e09526825204" />
+
+
+## Demo video link (1–2 minutes) :-
+
+> Your deposit. Locked fairly. Released transparently.
 TrustRent is a production-quality Stellar dApp for **rental security deposits**.
 A tenant's deposit is locked in a **Soroban smart-contract escrow** instead of
 sitting in the landlord's pocket, and released only through a transparent,
