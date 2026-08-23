@@ -36,7 +36,7 @@ TrustRent moves deposits out of anyone's pocket and into a smart contract. Both 
 ---
 
 ### Public GitHub repository
-
+https://github.com/manishkumar0802/Trustrent
 
 ### Transaction hash for contract interaction
 a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
