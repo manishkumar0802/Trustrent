@@ -11,6 +11,7 @@
 ![Stellar](https://img.shields.io/badge/stellar-soroban%2022-purple)
 
 **A decentralized rental escrow & dispute resolution platform built on Stellar Soroban**
+Github Username - manishkumar0802
 
 [Getting Started](#-getting-started) • [Architecture](#-architecture) • [Smart Contracts](#-smart-contracts) • [Demo](#-demo) • [Deployment](#-deployment)
 
