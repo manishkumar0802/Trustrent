@@ -51,28 +51,17 @@ NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT
 <div align="center">
   <img width="897" height="733" alt="WhatsApp Image 2026-08-22 at 19 35 28" src="https://github.com/user-attachments/assets/480d4926-96bf-491f-857f-7077546e5ae6" />
 
-<img src="screenshots/mobile-dashboard.png" alt="Mobile Dashboard" width="300"/>
-&nbsp;&nbsp;
-<img src="screenshots/mobile-agreement.png" alt="Mobile Agreement" width="300"/>
-</div>
 
 ### CI/CD pipeline running
 
 <div align="center">
   <img width="1566" height="872" alt="WhatsApp Image 2026-08-22 at 19 40 16" src="https://github.com/user-attachments/assets/e1768775-ccba-4d7c-b768-9f8f2e69e4c5" />
 
-<img src="screenshots/desktop-dashboard.png" alt="Desktop Dashboard" width="700"/>
-</div>
 
 ### Test output with 3+ passing tests
 
 <div align="center">
   <img width="1449" height="954" alt="WhatsApp Image 2026-08-22 at 19 31 27" src="https://github.com/user-attachments/assets/54e74534-4777-4006-a780-2bc01d481b25" />
-
-<img src="screenshots/disputes-page.png" alt="Disputes Page" width="350"/>
-&nbsp;&nbsp;
-<img src="screenshots/evidence-upload.png" alt="Evidence Upload" width="350"/>
-</div>
 
 
 
@@ -387,16 +376,6 @@ stellar contract deploy --wasm target/wasm32-unknown-unknown/release/dispute.was
 # (see scripts/deployment/ for the full sequence)
 ```
 
-### 📌 Deployment Addresses
-
-| Contract | Address | Network |
-|---|---|---|
-| `rental_agreement` | `CONTRACT_ADDRESS_HERE` | Stellar Testnet |
-| `escrow` | `CONTRACT_ADDRESS_HERE` | Stellar Testnet |
-| `dispute` | `CONTRACT_ADDRESS_HERE` | Stellar Testnet |
-| `user_registry` | `CONTRACT_ADDRESS_HERE` | Stellar Testnet |
-
-**Transaction Hash:** `TX_HASH_HERE` *(recorded after testnet deploy)*
 
 ### Deploy Frontend to Vercel
 
