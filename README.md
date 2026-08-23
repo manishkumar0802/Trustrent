@@ -30,35 +30,35 @@ TrustRent moves deposits out of anyone's pocket and into a smart contract. Both 
 
 ---
 
-## 🖼️ Screenshots
 
-### 📱 Mobile Responsive UI
+###  Mobile Responsive UI
 
 <div align="center">
+  <img width="897" height="733" alt="WhatsApp Image 2026-08-22 at 19 35 28" src="https://github.com/user-attachments/assets/480d4926-96bf-491f-857f-7077546e5ae6" />
+
 <img src="screenshots/mobile-dashboard.png" alt="Mobile Dashboard" width="300"/>
 &nbsp;&nbsp;
 <img src="screenshots/mobile-agreement.png" alt="Mobile Agreement" width="300"/>
 </div>
 
-### 💻 Desktop Dashboard
+### CI/CD pipeline running
 
 <div align="center">
+  <img width="1566" height="872" alt="WhatsApp Image 2026-08-22 at 19 40 16" src="https://github.com/user-attachments/assets/e1768775-ccba-4d7c-b768-9f8f2e69e4c5" />
+
 <img src="screenshots/desktop-dashboard.png" alt="Desktop Dashboard" width="700"/>
 </div>
 
-### ⚖️ Disputes & Evidence
+### Test output with 3+ passing tests
 
 <div align="center">
+  <img width="1449" height="954" alt="WhatsApp Image 2026-08-22 at 19 31 27" src="https://github.com/user-attachments/assets/54e74534-4777-4006-a780-2bc01d481b25" />
+
 <img src="screenshots/disputes-page.png" alt="Disputes Page" width="350"/>
 &nbsp;&nbsp;
 <img src="screenshots/evidence-upload.png" alt="Evidence Upload" width="350"/>
 </div>
 
-### 🔄 Role Switcher
-
-<div align="center">
-<img src="screenshots/role-switcher.png" alt="Role Switcher" width="350"/>
-</div>
 
 > 💡 **Want to capture your own screenshots?** Start the app with `npm run dev`, open `http://localhost:3000`, and grab the pages. Save them as PNGs in the `screenshots/` folder and they'll show up here.
 
