@@ -31,6 +31,21 @@ TrustRent moves deposits out of anyone's pocket and into a smart contract. Both 
 ---
 
 
+> 💡 **Want to capture your own screenshots?** Start the app with `npm run dev`, open `http://localhost:3000`, and grab the pages. Save them as PNGs in the `screenshots/` folder and they'll show up here.
+
+---
+
+### Public GitHub repository
+
+
+### Transaction hash for contract interaction
+a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
+
+###  Contract deployment address
+NEXT_PUBLIC_AGREEMENT_CONTRACT_ID=CC3NX7ZRDDW3V4M25XKVIWXMDR6RBKOB3MRQYMEU54AIMO57EL3DI72D
+NEXT_PUBLIC_ESCROW_CONTRACT_ID=CBYIYJAOVPFXIWOUKSEKGHN4IN2V5QYHFMVY3XJDSPU4FPE6W7QWMBNV
+NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT4RIPNXP6
+
 ###  Mobile Responsive UI
 
 <div align="center">
@@ -60,16 +75,6 @@ TrustRent moves deposits out of anyone's pocket and into a smart contract. Both 
 </div>
 
 
-> 💡 **Want to capture your own screenshots?** Start the app with `npm run dev`, open `http://localhost:3000`, and grab the pages. Save them as PNGs in the `screenshots/` folder and they'll show up here.
-
----
-### Transaction hash for contract interaction
-a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
-
-###  Contract deployment address
-NEXT_PUBLIC_AGREEMENT_CONTRACT_ID=CC3NX7ZRDDW3V4M25XKVIWXMDR6RBKOB3MRQYMEU54AIMO57EL3DI72D
-NEXT_PUBLIC_ESCROW_CONTRACT_ID=CBYIYJAOVPFXIWOUKSEKGHN4IN2V5QYHFMVY3XJDSPU4FPE6W7QWMBNV
-NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT4RIPNXP6
 
 ## 🎯 Live Demo
 
