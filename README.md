@@ -106,29 +106,29 @@ NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    TRUSTRENT ARCHITECTURE                    │
+│                    TRUSTRENT ARCHITECTURE                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌──────────────┐   HTTP    ┌──────────────┐               │
-│  │  apps/web    │ ────────► │  apps/api    │               │
-│  │  Next.js     │           │  Fastify     │               │
-│  └──────┬───────┘           └──────┬───────┘               │
+│  ┌──────────────┐   HTTP    ┌──────────────┐                │
+│  │  apps/web    │ ────────► │  apps/api    │                │
+│  │  Next.js     │           │  Fastify     │                │
+│  └──────┬───────┘           └──────┬───────┘                │
 │         │                          │                        │
 │         ▼                          ▼                        │
 │  ┌──────────────────────────────────────────┐               │
 │  │         packages/blockchain              │               │
 │  │    TrustRentClient (@stellar/stellar-sdk)│               │
 │  └──────────────────┬───────────────────────┘               │
-│                     │ Soroban RPC                            │
+│                     │ Soroban RPC                           │
 │                     ▼                                       │
 │  ┌──────────────────────────────────────────┐               │
 │  │          SOROBAN CONTRACTS               │               │
 │  │                                          │               │
-│  │  ┌─────────────────┐   ┌──────────┐     │               │
+│  │  ┌─────────────────┐   ┌──────────┐      │               │
 │  │  │ Rental Agreement │──►│  Escrow  │     │               │
 │  │  │ (orchestrator)   │◄──│ (vault)  │     │               │
 │  │  └────────┬─────────┘   └────┬─────┘     │               │
-│  │           │                   │           │               │
+│  │           │                   │          │               │
 │  │  ┌────────▼─────────┐        │           │               │
 │  │  │     Dispute      │────────┘           │               │
 │  │  │ (mediator)       │                    │               │
@@ -149,41 +149,6 @@ NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT
 
 ---
 
-## 📁 Project Structure
-
-```
-TrustRent/
-├── apps/
-│   ├── web/                    # Next.js frontend
-│   │   └── src/
-│   │       ├── app/            # App Router pages
-│   │       ├── components/     # UI components + deposit flow
-│   │       ├── data/           # Mock data (phase 1)
-│   │       ├── hooks/          # React hooks
-│   │       ├── services/       # Storage + dispute stores
-│   │       └── test/           # Frontend tests
-│   └── api/                    # Fastify API service
-│       └── src/
-│           ├── modules/        # Agreement routes + service
-│           └── index.ts        # Server entry
-├── contracts/                  # Soroban Cargo workspace (Rust)
-│   ├── common/                 # Shared types, errors, events, interfaces
-│   ├── rental_agreement/       # Agreement lifecycle orchestrator
-│   ├── escrow/                 # Deposit vault — holds & releases funds
-│   ├── dispute/                # Dispute records & resolution
-│   └── user_registry/          # Identity directory & reputation
-├── packages/
-│   ├── types/                  # TypeScript domain types
-│   ├── shared/                 # Lifecycle helpers, formatting, event labels
-│   └── blockchain/             # Typed TrustRentClient stub
-├── scripts/
-│   ├── deployment/             # Deploy + seed scripts
-│   └── seed/                   # Test fixture generator
-├── tests/                      # Integration strategy + fixtures
-├── docs/                       # Architecture, events, storage, roadmap
-└── .github/
-    └── workflows/ci.yml        # CI: contracts + web + api
-```
 
 ---
 
