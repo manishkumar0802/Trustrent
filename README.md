@@ -70,23 +70,7 @@ NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT
 | | Link |
 |:---:|---|
 | 🌐 **Live App** | [trustrent.vercel.app](https://trustrent.vercel.app) |
-| 📺 **Demo Video** | [YouTube — 2 min walkthrough](https://youtu.be/YOUR_VIDEO_ID) |
-
-### 📋 Submission Checklist
-
-| # | Deliverable | Status | Evidence |
-|:---:|---|:---:|---|
-| 1 | Public GitHub repository | ✅ | [manishkumar0802/Trustrent](https://github.com/manishkumar0802/Trustrent) |
-| 2 | README with complete documentation | ✅ | You're reading it |
-| 3 | 10+ meaningful commits | ✅ | [`git rev-list --count HEAD`](https://github.com/manishkumar0802/Trustrent/commits/main) |
-| 4 | Live demo link | ✅ | [trustrent.vercel.app](https://trustrent.vercel.app) |
-| 5 | Contract deployment address | ✅ | See [Deployment](#-deployment) |
-| 6 | Transaction hash | ✅ | See [Deployment](#-deployment) |
-| 7 | Mobile responsive UI screenshot | ✅ | See [Screenshots](#-screenshots) |
-| 8 | CI/CD pipeline running | ✅ | [![CI](https://github.com/manishkumar0802/Trustrent/actions/workflows/ci.yml/badge.svg)](https://github.com/manishkumar0802/Trustrent/actions) |
-| 9 | Test output (3+ passing tests) | ✅ | See [Testing](#-testing) |
-| 10 | Demo video (1–2 min) | ✅ | [YouTube](https://youtu.be/YOUR_VIDEO_ID) |
-
+| 📺 **Demo Video** | [YouTube — 2 min walkthrough](https://youtu.be/AiXMuUB1K-Q) |
 ---
 
 ## 🚀 Tech Stack
