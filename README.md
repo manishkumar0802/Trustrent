@@ -69,7 +69,7 @@ NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT
 
 | | Link |
 |:---:|---|
-| 🌐 **Live App** | [trustrent.vercel.app](https://trustrent.vercel.app) |
+| 🌐 **Live App** | [[trustrent.vercel.app](https://trustrent.vercel.app](https://trustrent-lac.vercel.app/) |
 | 📺 **Demo Video** | [YouTube — 2 min walkthrough](https://youtu.be/AiXMuUB1K-Q) |
 ---
 
