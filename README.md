@@ -13,72 +13,38 @@ A decentralized rental escrow & dispute resolution platform built on Stellar Sor
 ![Stellar](https://img.shields.io/badge/stellar-soroban%2022-purple)
 
 by **[@manishkumar0802](https://github.com/manishkumar0802)**
-
-[Getting Started](#-getting-started) · [Screenshots](#-screenshots) · [Demo](#-live-demo) · [Architecture](#-architecture) · [Smart Contracts](#-smart-contracts)
-
 </div>
+## SUBMISSION CHECKLIST 
 
----
-## TrustRent Live Demo Link
+## 1) TrustRent Live Demo Link
 https://trustrent-lac.vercel.app/
 
-
-## Why TrustRent?
-
-When someone rents a house, the security deposit sits in the landlord's pocket. If the tenant damages something — fair deduction. But if the landlord just... keeps it? Not much recourse.
-
-TrustRent moves deposits out of anyone's pocket and into a smart contract. Both sides agree to the terms. Every action is recorded on-chain. If things go well, the deposit returns automatically. If there's a dispute, an arbitrator decides with full evidence.
-
-
-**No trust required — just code.**
-
----
-
-
-> 💡 **Want to capture your own screenshots?** Start the app with `npm run dev`, open `http://localhost:3000`, and grab the pages. Save them as PNGs in the `screenshots/` folder and they'll show up here.
-
----
-
-
-### Public GitHub repository
+## 2) Public GitHub repository
 https://github.com/manishkumar0802/Trustrent
 
-
-### Transaction hash for contract interaction
+## 3) Transaction hash for contract interaction
 a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
 
 
-###  Contract deployment address
+## 4) Contract deployment address
 NEXT_PUBLIC_AGREEMENT_CONTRACT_ID=CC3NX7ZRDDW3V4M25XKVIWXMDR6RBKOB3MRQYMEU54AIMO57EL3DI72D
 NEXT_PUBLIC_ESCROW_CONTRACT_ID=CBYIYJAOVPFXIWOUKSEKGHN4IN2V5QYHFMVY3XJDSPU4FPE6W7QWMBNV
 NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT4RIPNXP6
 
-
-###  Mobile Responsive UI
-
+## 5) Mobile Responsive UI
 <div align="center">
   <img width="897" height="733" alt="WhatsApp Image 2026-08-22 at 19 35 28" src="https://github.com/user-attachments/assets/480d4926-96bf-491f-857f-7077546e5ae6" />
-
-
-### CI/CD pipeline running
-
+  
+## 6) CI/CD pipeline running
 <div align="center">
   <img width="1566" height="872" alt="WhatsApp Image 2026-08-22 at 19 40 16" src="https://github.com/user-attachments/assets/e1768775-ccba-4d7c-b768-9f8f2e69e4c5" />
 
-
-### Test output with 3+ passing tests
-
+## 7) Test output with 3+ passing tests
 <div align="center">
   <img width="1449" height="954" alt="WhatsApp Image 2026-08-22 at 19 31 27" src="https://github.com/user-attachments/assets/54e74534-4777-4006-a780-2bc01d481b25" />
 
-
-
-## 🎯 Live Demo
-
-| | Link |
-|:---:|---|
-| 🌐 **Live App** | [[trustrent.vercel.app](https://trustrent.vercel.app](https://trustrent-lac.vercel.app/) |
-| 📺 **Demo Video** | [YouTube — 2 min walkthrough](https://youtu.be/AiXMuUB1K-Q) |
+## 8) Demo video Link - https://youtu.be/AiXMuUB1K-Q
+ 
 ---
 
 ## 🚀 Tech Stack
