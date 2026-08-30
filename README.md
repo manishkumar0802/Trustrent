@@ -19,14 +19,16 @@ by **[@manishkumar0802](https://github.com/manishkumar0802)**
 </div>
 
 ---
-### TrustRent Live Demo Link
+## TrustRent Live Demo Link
 https://trustrent-lac.vercel.app/
+
 
 ## Why TrustRent?
 
 When someone rents a house, the security deposit sits in the landlord's pocket. If the tenant damages something — fair deduction. But if the landlord just... keeps it? Not much recourse.
 
 TrustRent moves deposits out of anyone's pocket and into a smart contract. Both sides agree to the terms. Every action is recorded on-chain. If things go well, the deposit returns automatically. If there's a dispute, an arbitrator decides with full evidence.
+
 
 **No trust required — just code.**
 
@@ -37,16 +39,20 @@ TrustRent moves deposits out of anyone's pocket and into a smart contract. Both 
 
 ---
 
+
 ### Public GitHub repository
 https://github.com/manishkumar0802/Trustrent
 
+
 ### Transaction hash for contract interaction
 a655fe2659172edb53c3e74d0f1e89d2d33026426998c5155cc27b59c10beee3
+
 
 ###  Contract deployment address
 NEXT_PUBLIC_AGREEMENT_CONTRACT_ID=CC3NX7ZRDDW3V4M25XKVIWXMDR6RBKOB3MRQYMEU54AIMO57EL3DI72D
 NEXT_PUBLIC_ESCROW_CONTRACT_ID=CBYIYJAOVPFXIWOUKSEKGHN4IN2V5QYHFMVY3XJDSPU4FPE6W7QWMBNV
 NEXT_PUBLIC_DISPUTE_CONTRACT_ID=CDJQKL7DPAXU4JKOE4PU2VHE6625BK3KO57LARROKQ4YBDTT4RIPNXP6
+
 
 ###  Mobile Responsive UI
 
